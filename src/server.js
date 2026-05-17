@@ -21,6 +21,7 @@ const el = {
   progressText: document.querySelector("#progressText"),
   currentModel: document.querySelector("#currentModel"),
   gatewayUrl: document.querySelector("#gatewayUrl"),
+  gatewayApiUrl: document.querySelector("#gatewayApiUrl"),
   gatewayStatus: document.querySelector("#gatewayStatus"),
   connectGateway: document.querySelector("#connectGateway"),
   disconnectGateway: document.querySelector("#disconnectGateway"),
@@ -62,7 +63,29 @@ function init() {
   el.disconnectGateway?.addEventListener("click", disconnectGateway);
   channel.addEventListener("message", onBridgeMessage);
   window.setInterval(announceReady, 2000);
-  connectGateway();
+  initGatewayConfig().finally(connectGateway);
+}
+
+async function initGatewayConfig() {
+  if (!el.gatewayUrl) {
+    return;
+  }
+
+  try {
+    const response = await fetch("./webllm-gateway-config.json", { cache: "no-store" });
+    if (!response.ok) {
+      return;
+    }
+    const config = await response.json();
+    if (config.bridge) {
+      el.gatewayUrl.value = config.bridge;
+    }
+    if (config.base_url && el.gatewayApiUrl) {
+      el.gatewayApiUrl.textContent = config.base_url;
+    }
+  } catch {
+    // Static deployments may not have a generated gateway config.
+  }
 }
 
 function getSelectedModel() {

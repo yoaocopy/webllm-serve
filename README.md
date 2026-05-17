@@ -1,25 +1,86 @@
 # WebLLM Serve
 
-Browser-first local WebLLM playground with an OpenAI-shaped message bridge.
+WebLLM Serve lets a browser-hosted WebLLM engine behave like a local
+OpenAI-compatible service. The browser still runs WebLLM/WebGPU; a small Go
+gateway exposes local HTTP APIs for clients, CLI tools, and SDKs.
 
-This implementation is intentionally static: it can be served with
-`python3 -m http.server` or published to GitHub Pages. Open `server.html` to
-load and manage WebLLM, then open `client.html` to chat with it using
-OpenAI-style messages.
+## Quick Start
 
-## Run With Go Gateway
-
-The main mode uses a small Go gateway to expose OpenAI-compatible local HTTP
-APIs:
-
-```text
-http://127.0.0.1:21434/v1
-```
-
-Start it from the repository root with:
+From the repository or release folder root:
 
 ```bash
 go run ./gateway
+```
+
+Or run a built binary:
+
+```bash
+./webllm-gateway-linux-amd64
+```
+
+On Windows:
+
+```powershell
+.\webllm-gateway-windows-amd64.exe
+```
+
+The gateway prints the actual URLs at startup. Use those printed URLs as the
+source of truth, especially if the default port is already occupied.
+
+Example startup information:
+
+```text
+WebLLM Serve gateway started
+Listening:   http://127.0.0.1:21434
+Home:        http://127.0.0.1:21434/
+Server UI:   http://127.0.0.1:21434/server.html
+Client UI:   http://127.0.0.1:21434/client.html
+OpenAI API:  http://127.0.0.1:21434/v1
+Bridge WS:   ws://127.0.0.1:21434/bridge
+```
+
+Then:
+
+1. Open the printed `Home` or `Server UI` URL.
+2. In `server.html`, connect to the gateway if needed.
+3. Load a WebLLM model.
+4. Open the printed `Client UI` URL, or call the printed `OpenAI API` URL from
+   curl, CLI tools, or SDKs.
+
+## Ports
+
+If no `-addr` is provided, the gateway starts at:
+
+```text
+127.0.0.1:21434
+```
+
+If that port is busy, it searches upward until it finds an available port, up
+to:
+
+```text
+127.0.0.1:21534
+```
+
+The selected address is written to:
+
+```text
+webllm-gateway-config.json
+```
+
+`server.html` and `client.html` read this file on startup, so they can follow
+the actual selected gateway port automatically.
+
+To force a specific port:
+
+```bash
+./webllm-gateway-linux-amd64 -addr 127.0.0.1:21440
+```
+
+On Windows:
+
+```powershell
+.\webllm-gateway-windows-amd64.exe -addr 127.0.0.1:21440
 ```
 
 ## Build Gateway Binaries
@@ -57,10 +118,6 @@ The scripts output binaries into `dist/`:
 - `webllm-gateway-darwin-arm64`
 - `webllm-gateway-linux-amd64`
 - `webllm-gateway-linux-arm64`
-
-Distribute the gateway binary together with the project static files
-(`server.html`, `client.html`, `src/`, etc.). Run the binary from the repository
-or release folder root so it can serve those static files.
 
 ## Using Built Binaries
 
@@ -117,58 +174,19 @@ On Windows:
 .\webllm-gateway.exe
 ```
 
-Then open:
+Then open the URLs printed by the gateway. If the binary is launched from
+another directory, it may not find `server.html` and `src/`. In that case, start
+it from the release folder in a terminal. A future version can use Go `embed` to
+produce a fully self-contained single binary.
 
-```text
-http://127.0.0.1:21434/server.html
-http://127.0.0.1:21434/client.html
-```
+## Gateway APIs
 
-If the binary is launched from another directory, it may not find `server.html`
-and `src/`. In that case, start it from the release folder in a terminal. A
-future version can use Go `embed` to produce a fully self-contained single
-binary.
-
-The default port is `21434`. To use another port:
-
-```bash
-./webllm-gateway -addr 127.0.0.1:21435
-```
-
-On Windows:
-
-```powershell
-.\webllm-gateway.exe -addr 127.0.0.1:21435
-```
-
-Then open:
-
-- Server console: `http://127.0.0.1:21434/server.html`
-- HTTP chat client: `http://127.0.0.1:21434/client.html`
-
-Workflow:
-
-1. Start the Go gateway.
-2. Open `server.html`.
-3. Click `连接 Gateway` if it is not already connected.
-4. Load a WebLLM model in `server.html`.
-5. Open `client.html`, or call the API from curl/OpenAI SDK.
-
-The gateway serves static files and also exposes:
+The gateway serves static files and exposes:
 
 - `GET /health`
 - `GET /v1/models`
 - `POST /v1/chat/completions`
 - `GET /bridge` as the WebSocket bridge used by `server.html`
-
-Example curl request:
-
-```bash
-curl http://127.0.0.1:21434/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer webllm-local" \
-  -d "{\"messages\":[{\"role\":\"user\",\"content\":\"你是谁\"}],\"stream\":false,\"max_tokens\":128}"
-```
 
 The HTTP API does not require the caller to be same-origin. CORS is enabled for
 local browser clients.
@@ -178,16 +196,29 @@ compatibility, but it does not enforce API-key authentication yet. The key is
 currently passed through by clients for shape compatibility and future auth
 support.
 
-Streaming curl example:
+## Curl And SDK Examples
+
+Use the actual port printed by the gateway. The examples below assume `21434`.
+
+Non-streaming curl:
+
+```bash
+curl http://127.0.0.1:21434/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer webllm-local" \
+  -d "{\"messages\":[{\"role\":\"user\",\"content\":\"你是谁\"}],\"stream\":false,\"max_tokens\":128}"
+```
+
+Streaming curl:
 
 ```bash
 curl -N http://127.0.0.1:21434/v1/chat/completions \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer webllm-local" \
-  -d "{\"messages\":[{\"role\":\"user\",\"content\":\"用一句话介绍你自己\"}],\"stream\":false,\"max_tokens\":128}"
+  -d "{\"messages\":[{\"role\":\"user\",\"content\":\"用一句话介绍你自己\"}],\"stream\":true,\"max_tokens\":128}"
 ```
 
-OpenAI Python SDK example:
+OpenAI Python SDK:
 
 ```python
 from openai import OpenAI
@@ -206,11 +237,7 @@ response = client.chat.completions.create(
 print(response.choices[0].message.content)
 ```
 
-The `model` field is accepted for OpenAI SDK compatibility. When omitted by the
-browser client, the gateway/server uses the model currently loaded in
-`server.html`.
-
-OpenAI Node SDK example:
+OpenAI Node SDK:
 
 ```js
 import OpenAI from "openai";
@@ -229,13 +256,26 @@ const response = await client.chat.completions.create({
 console.log(response.choices[0].message.content);
 ```
 
+The `model` field is accepted for OpenAI SDK compatibility. When omitted by the
+browser client, the gateway/server uses the model currently loaded in
+`server.html`.
+
 ## Static Same-Origin Demo
+
+The old pure-browser same-origin demo is preserved:
+
+- `server-same-origin.html`
+- `client-same-origin.html`
+- `src/server-same-origin.js`
+- `src/client-same-origin.js`
+
+Run any static server:
 
 ```bash
 python3 -m http.server 8000
 ```
 
-If Python is not available, Node.js can serve the same files:
+Or:
 
 ```bash
 node scripts/static-server.mjs
@@ -246,20 +286,14 @@ Then open:
 - Same-origin server console: `http://127.0.0.1:8000/server-same-origin.html`
 - Same-origin chat client: `http://127.0.0.1:8000/client-same-origin.html`
 
-Keep the server console tab open while using the client.
+The same-origin demo uses BroadcastChannel and cannot be called by curl, CLI
+tools, or OpenAI SDKs.
 
-## Current Browser-Only Boundary
+## Browser Boundary
 
-A plain browser page cannot listen on `127.0.0.1:21434` as an HTTP server. The
-Go gateway provides that local HTTP server and forwards requests to
-`server.html`, where WebLLM runs in the browser/WebGPU environment.
-
-The old pure-browser same-origin demo is preserved as:
-
-- `server-same-origin.html`
-- `client-same-origin.html`
-- `src/server-same-origin.js`
-- `src/client-same-origin.js`
+A plain browser page cannot listen on a local TCP port as an HTTP server. The Go
+gateway provides that local HTTP server and forwards requests to `server.html`,
+where WebLLM runs in the browser/WebGPU environment.
 
 ## Models
 
@@ -297,11 +331,12 @@ The server selects the WebLLM runtime by model:
 ## Browser Client Usage
 
 1. Start the Go gateway.
-2. Open `http://127.0.0.1:21434/server.html`.
+2. Open the `Server UI` URL printed by the gateway.
 3. Select a model such as `Qwen3.5-0.8B-q4f16_1-MLC` and click load.
-4. Open `http://127.0.0.1:21434/client.html`, or host `client.html` elsewhere.
-5. Click `检查 Gateway`. The status should become connected or show the loaded model
-   name.
+4. Open the `Client UI` URL printed by the gateway, or host `client.html`
+   elsewhere.
+5. Click `检查 Gateway`. The status should become connected or show the loaded
+   model name.
 6. Send a message.
 
 The browser client does not choose a model. It always uses the model currently
@@ -468,5 +503,3 @@ Usually means the model weight manifest URL is not reachable or the model path
 is wrong. For a valid Hugging Face model, first verify the `model` URL and
 runtime/model_lib compatibility before changing hosts.
 
-Both pages must use the same origin. For example, do not mix
-`localhost:8000` and `127.0.0.1:8000`.

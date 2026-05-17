@@ -24,7 +24,7 @@ let loadedModel = "";
 function init() {
   renderMessages();
   setRaw({});
-  checkGateway();
+  initGatewayConfig().finally(checkGateway);
 
   el.connectServer.addEventListener("click", checkGateway);
   el.refreshModels.addEventListener("click", refreshModels);
@@ -40,6 +40,21 @@ function init() {
       el.chatForm.requestSubmit();
     }
   });
+}
+
+async function initGatewayConfig() {
+  try {
+    const response = await fetch("./webllm-gateway-config.json", { cache: "no-store" });
+    if (!response.ok) {
+      return;
+    }
+    const config = await response.json();
+    if (config.base_url) {
+      el.baseUrl.value = config.base_url;
+    }
+  } catch {
+    // Static deployments may not have a generated gateway config.
+  }
 }
 
 async function checkGateway() {
@@ -232,4 +247,3 @@ function setRaw(value) {
 }
 
 init();
-

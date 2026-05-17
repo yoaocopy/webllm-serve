@@ -15,6 +15,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -52,8 +53,14 @@ type WSConn struct {
 }
 
 func main() {
-	addr := flag.String("addr", "127.0.0.1:21434", "gateway listen address")
+	addr := flag.String("addr", "", "gateway listen address. If empty, starts at 127.0.0.1:21434 and searches upward")
 	flag.Parse()
+
+	listener, listenAddr, err := chooseListener(*addr)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer listener.Close()
 
 	gw := &Gateway{pending: make(map[string]chan BridgeMessage)}
 	mux := http.NewServeMux()
@@ -64,13 +71,68 @@ func main() {
 	mux.Handle("/", http.FileServer(http.Dir(".")))
 
 	server := &http.Server{
-		Addr:              *addr,
 		Handler:           cors(mux),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
-	log.Printf("WebLLM gateway listening on http://%s", *addr)
-	log.Fatal(server.ListenAndServe())
+	if err := writeGatewayConfig(listenAddr); err != nil {
+		log.Printf("failed to write gateway config: %v", err)
+	}
+
+	printStartupSummary(listenAddr)
+	log.Fatal(server.Serve(listener))
+}
+
+func chooseListener(explicitAddr string) (net.Listener, string, error) {
+	if explicitAddr != "" {
+		listener, err := net.Listen("tcp", explicitAddr)
+		return listener, explicitAddr, err
+	}
+
+	const host = "127.0.0.1"
+	for port := 21434; port <= 21534; port++ {
+		addr := net.JoinHostPort(host, strconv.Itoa(port))
+		listener, err := net.Listen("tcp", addr)
+		if err == nil {
+			return listener, addr, nil
+		}
+	}
+
+	return nil, "", errors.New("no available gateway port found in range 21434-21534")
+}
+
+func writeGatewayConfig(addr string) error {
+	config := map[string]string{
+		"addr":     addr,
+		"base_url": "http://" + addr + "/v1",
+		"bridge":   "ws://" + addr + "/bridge",
+	}
+	data, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile("webllm-gateway-config.json", data, 0644)
+}
+
+func printStartupSummary(addr string) {
+	line := strings.Repeat("=", 72)
+	log.Println(line)
+	log.Println("WebLLM Serve gateway started")
+	log.Printf("Listening:   http://%s", addr)
+	log.Printf("Home:        http://%s/", addr)
+	log.Printf("Server UI:   http://%s/server.html", addr)
+	log.Printf("Client UI:   http://%s/client.html", addr)
+	log.Printf("OpenAI API:  http://%s/v1", addr)
+	log.Printf("Bridge WS:   ws://%s/bridge", addr)
+	log.Println("")
+	log.Println("Next steps:")
+	log.Println("  1. Open the Home or Server UI URL above.")
+	log.Println("  2. Load a WebLLM model in server.html.")
+	log.Println("  3. Open the Client UI or call the OpenAI-compatible API.")
+	log.Println("")
+	log.Println("If the default port is busy, the gateway selects a higher port.")
+	log.Println("Use the URLs printed here as the source of truth.")
+	log.Println(line)
 }
 
 func cors(next http.Handler) http.Handler {

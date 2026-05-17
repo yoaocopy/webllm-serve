@@ -9,23 +9,80 @@
   <body>
     <main class="home-shell">
       <section class="home-hero">
-        <p class="eyebrow">WebLLM Serve</p>
-        <h1>浏览器里的本地模型服务台</h1>
-        <p class="lede">
-          主线版本通过 Go gateway 提供 OpenAI 兼容 HTTP API，服务端页面负责在浏览器内运行 WebLLM。
-        </p>
-        <div class="home-actions">
-          <a class="button primary" href="./server.html">打开服务端</a>
-          <a class="button secondary" href="./client.html">打开 HTTP 客户端</a>
-          <a class="button secondary" href="./server-same-origin.html">同源服务端</a>
-          <a class="button secondary" href="./client-same-origin.html">同源客户端</a>
+        <div class="home-hero-copy">
+          <p class="eyebrow">WebLLM Serve</p>
+          <h1>浏览器里的本地模型服务台</h1>
+          <p class="lede">
+            先启动 Go gateway，再按照终端中打印的主页地址打开本页面。页面会尝试读取 gateway
+            生成的配置并显示实际端口；如果端口显示和终端日志不同，请以 gateway 启动日志为准。
+          </p>
+          <div class="home-actions">
+            <a class="button primary" href="./server.html" target="_blank" rel="noopener">打开服务端</a>
+            <a class="button secondary" href="./client.html" target="_blank" rel="noopener">打开 HTTP 客户端</a>
+            <a class="button secondary" href="./server-same-origin.html" target="_blank" rel="noopener">同源服务端</a>
+            <a class="button secondary" href="./client-same-origin.html" target="_blank" rel="noopener">同源客户端</a>
+          </div>
         </div>
+        <aside class="home-status" aria-label="Gateway 信息">
+          <div>
+            <span>当前 gateway</span>
+            <code id="homeUrl">http://127.0.0.1:21434/</code>
+          </div>
+          <div>
+            <span>OpenAI API</span>
+            <code id="apiUrl">http://127.0.0.1:21434/v1</code>
+          </div>
+          <div>
+            <span>默认端口</span>
+            <code>21434 起，自动向上寻找</code>
+          </div>
+        </aside>
+      </section>
+      <section class="home-steps" aria-label="使用步骤">
+        <article>
+          <span>1</span>
+          <h2>启动 gateway</h2>
+          <p><code>go run ./gateway</code>，或运行编译后的二进制文件。</p>
+        </article>
+        <article>
+          <span>2</span>
+          <h2>加载模型</h2>
+          <p>打开服务端页面，选择模型并保持该浏览器标签页运行。</p>
+        </article>
+        <article>
+          <span>3</span>
+          <h2>开始调用</h2>
+          <p>使用 HTTP 客户端页面，或通过 curl、CLI、OpenAI SDK 调用本地 API。</p>
+        </article>
       </section>
       <section class="note-band">
-        <strong>提示：</strong>运行 <code>go run ./gateway</code> 后，可通过
-        <code>http://127.0.0.1:21434/v1</code> 使用 OpenAI API。同源页面保留为
-        BroadcastChannel 验证版本。
+        <p>
+          端口默认从 <code>21434</code> 开始；如果端口被占用，gateway 会自动向上寻找可用端口，并把结果写入
+          <code>webllm-gateway-config.json</code>。跨页面和外部请求都应以 gateway 启动日志显示的实际端口为准。
+        </p>
+        <p>
+          Windows 二进制示例：<code>.\webllm-gateway-windows-amd64.exe</code>。macOS 二进制示例：<code>./webllm-gateway-darwin-arm64</code>。
+        </p>
       </section>
     </main>
+    <script>
+      async function updateGatewayInfo() {
+        try {
+          const response = await fetch("./webllm-gateway-config.json", { cache: "no-store" });
+          if (!response.ok) return;
+          const config = await response.json();
+          if (config.base_url) {
+            document.querySelector("#apiUrl").textContent = config.base_url;
+          }
+          if (config.addr) {
+            document.querySelector("#homeUrl").textContent = `http://${config.addr}/`;
+          }
+        } catch {
+          // Static deployments may not have a generated gateway config.
+        }
+      }
+
+      updateGatewayInfo();
+    </script>
   </body>
 </html>
