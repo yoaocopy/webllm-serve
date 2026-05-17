@@ -7,7 +7,229 @@ This implementation is intentionally static: it can be served with
 load and manage WebLLM, then open `client.html` to chat with it using
 OpenAI-style messages.
 
-## Run
+## Run With Go Gateway
+
+The main mode uses a small Go gateway to expose OpenAI-compatible local HTTP
+APIs:
+
+```text
+http://127.0.0.1:21434/v1
+```
+
+Start it from the repository root with:
+
+```bash
+go run ./gateway
+```
+
+## Build Gateway Binaries
+
+On a computer with Go installed, build a binary for the current platform:
+
+```bash
+go build -trimpath -ldflags="-s -w" -o dist/webllm-gateway ./gateway
+```
+
+On Windows, build the current platform binary:
+
+```powershell
+New-Item -ItemType Directory -Force dist
+go build -trimpath -ldflags="-s -w" -o dist/webllm-gateway.exe ./gateway
+```
+
+Cross-compile common release targets from macOS/Linux:
+
+```bash
+sh scripts/build-gateway.sh
+```
+
+Cross-compile common release targets from Windows PowerShell:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/build-gateway.ps1
+```
+
+The scripts output binaries into `dist/`:
+
+- `webllm-gateway-windows-amd64.exe`
+- `webllm-gateway-windows-arm64.exe`
+- `webllm-gateway-darwin-amd64`
+- `webllm-gateway-darwin-arm64`
+- `webllm-gateway-linux-amd64`
+- `webllm-gateway-linux-arm64`
+
+Distribute the gateway binary together with the project static files
+(`server.html`, `client.html`, `src/`, etc.). Run the binary from the repository
+or release folder root so it can serve those static files.
+
+## Using Built Binaries
+
+The gateway executable serves the HTML/CSS/JS files from its current working
+directory. Do not distribute only the gateway binary unless you also embed or
+otherwise provide the static files.
+
+Recommended release layout:
+
+```text
+webllm-serve-release/
+  webllm-gateway-windows-amd64.exe
+  webllm-gateway-darwin-arm64
+  webllm-gateway-linux-amd64
+  index.html
+  server.html
+  client.html
+  server-same-origin.html
+  client-same-origin.html
+  src/
+  README.md
+```
+
+For a platform-specific package, include only the matching binary plus the
+static files. For example, a Windows x64 package can look like:
+
+```text
+webllm-serve-windows-amd64/
+  webllm-gateway.exe
+  index.html
+  server.html
+  client.html
+  server-same-origin.html
+  client-same-origin.html
+  src/
+  README.md
+```
+
+Run the binary from that folder:
+
+```bash
+./webllm-gateway-linux-amd64
+```
+
+On macOS:
+
+```bash
+./webllm-gateway-darwin-arm64
+```
+
+On Windows:
+
+```powershell
+.\webllm-gateway.exe
+```
+
+Then open:
+
+```text
+http://127.0.0.1:21434/server.html
+http://127.0.0.1:21434/client.html
+```
+
+If the binary is launched from another directory, it may not find `server.html`
+and `src/`. In that case, start it from the release folder in a terminal. A
+future version can use Go `embed` to produce a fully self-contained single
+binary.
+
+The default port is `21434`. To use another port:
+
+```bash
+./webllm-gateway -addr 127.0.0.1:21435
+```
+
+On Windows:
+
+```powershell
+.\webllm-gateway.exe -addr 127.0.0.1:21435
+```
+
+Then open:
+
+- Server console: `http://127.0.0.1:21434/server.html`
+- HTTP chat client: `http://127.0.0.1:21434/client.html`
+
+Workflow:
+
+1. Start the Go gateway.
+2. Open `server.html`.
+3. Click `连接 Gateway` if it is not already connected.
+4. Load a WebLLM model in `server.html`.
+5. Open `client.html`, or call the API from curl/OpenAI SDK.
+
+The gateway serves static files and also exposes:
+
+- `GET /health`
+- `GET /v1/models`
+- `POST /v1/chat/completions`
+- `GET /bridge` as the WebSocket bridge used by `server.html`
+
+Example curl request:
+
+```bash
+curl http://127.0.0.1:21434/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer webllm-local" \
+  -d "{\"messages\":[{\"role\":\"user\",\"content\":\"你是谁\"}],\"stream\":false,\"max_tokens\":128}"
+```
+
+The HTTP API does not require the caller to be same-origin. CORS is enabled for
+local browser clients.
+
+The gateway accepts OpenAI-style `Authorization: Bearer ...` headers for
+compatibility, but it does not enforce API-key authentication yet. The key is
+currently passed through by clients for shape compatibility and future auth
+support.
+
+Streaming curl example:
+
+```bash
+curl -N http://127.0.0.1:21434/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer webllm-local" \
+  -d "{\"messages\":[{\"role\":\"user\",\"content\":\"用一句话介绍你自己\"}],\"stream\":false,\"max_tokens\":128}"
+```
+
+OpenAI Python SDK example:
+
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="http://127.0.0.1:21434/v1",
+    api_key="webllm-local",
+)
+
+response = client.chat.completions.create(
+    model="server-loaded-model",
+    messages=[{"role": "user", "content": "你是谁"}],
+    max_tokens=128,
+)
+
+print(response.choices[0].message.content)
+```
+
+The `model` field is accepted for OpenAI SDK compatibility. When omitted by the
+browser client, the gateway/server uses the model currently loaded in
+`server.html`.
+
+OpenAI Node SDK example:
+
+```js
+import OpenAI from "openai";
+
+const client = new OpenAI({
+  baseURL: "http://127.0.0.1:21434/v1",
+  apiKey: "webllm-local",
+});
+
+const response = await client.chat.completions.create({
+  model: "server-loaded-model",
+  messages: [{ role: "user", content: "你是谁" }],
+  max_tokens: 128,
+});
+
+console.log(response.choices[0].message.content);
+```
+
+## Static Same-Origin Demo
 
 ```bash
 python3 -m http.server 8000
@@ -21,23 +243,23 @@ node scripts/static-server.mjs
 
 Then open:
 
-- Server console: `http://127.0.0.1:8000/server.html`
-- Chat client: `http://127.0.0.1:8000/client.html`
+- Same-origin server console: `http://127.0.0.1:8000/server-same-origin.html`
+- Same-origin chat client: `http://127.0.0.1:8000/client-same-origin.html`
 
 Keep the server console tab open while using the client.
 
 ## Current Browser-Only Boundary
 
-A plain browser page cannot listen on `127.0.0.1:11434` as an HTTP server. This
-version therefore exposes an OpenAI-shaped API over `BroadcastChannel` between
-same-origin pages. It is suitable for local testing, GitHub Pages hosting, and
-WebLLM model inspection.
+A plain browser page cannot listen on `127.0.0.1:21434` as an HTTP server. The
+Go gateway provides that local HTTP server and forwards requests to
+`server.html`, where WebLLM runs in the browser/WebGPU environment.
 
-The later desktop/gateway version can add the real OpenAI-compatible HTTP
-endpoints:
+The old pure-browser same-origin demo is preserved as:
 
-- `GET /v1/models`
-- `POST /v1/chat/completions`
+- `server-same-origin.html`
+- `client-same-origin.html`
+- `src/server-same-origin.js`
+- `src/client-same-origin.js`
 
 ## Models
 
@@ -58,8 +280,12 @@ The custom Hugging Face model is registered as a WebLLM `ModelRecord` in
 
 `https://huggingface.co/yoaocopy/sft_model_1.5B-q4f16_1-MLC`
 
-The browser server uses WebLLM's `indexeddb` cache backend instead of the
-default Cache API.
+The browser server uses WebLLM's `indexeddb` cache backend for model downloads.
+This matches the earlier same-origin version and avoids `Cache.add()` network
+errors seen with the browser Cache API in some environments. If a page refresh
+interrupts a large model download and later causes `Failed to read large
+IndexedDB value`, use `server.html`'s `清理模型缓存` button or clear the site's
+browser storage, then download the model again.
 
 The server selects the WebLLM runtime by model:
 
@@ -70,11 +296,11 @@ The server selects the WebLLM runtime by model:
 
 ## Browser Client Usage
 
-1. Serve the folder over HTTP. Do not open files with `file://`.
-2. Open `http://127.0.0.1:8000/server.html`.
+1. Start the Go gateway.
+2. Open `http://127.0.0.1:21434/server.html`.
 3. Select a model such as `Qwen3.5-0.8B-q4f16_1-MLC` and click load.
-4. Open `http://127.0.0.1:8000/client.html` in another tab.
-5. Click `连接服务端`. The status should become `已连接` or show the loaded model
+4. Open `http://127.0.0.1:21434/client.html`, or host `client.html` elsewhere.
+5. Click `检查 Gateway`. The status should become connected or show the loaded model
    name.
 6. Send a message.
 

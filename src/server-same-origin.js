@@ -1,6 +1,13 @@
-import { CHANNEL_NAME, CUSTOM_MODEL_RECORDS, MODEL_IDS, SERVER_STATE_KEY } from "./models.js";
+import {
+  CUSTOM_MODEL_RECORDS,
+  MODEL_IDS,
+  SAME_ORIGIN_CHANNEL_NAME,
+  SAME_ORIGIN_SERVER_STATE_KEY,
+} from "./models.js";
 
 const SFT_MODEL_ID = "sft_model_1.5B-q4f16_1-MLC (Hugging Face)";
+const CHANNEL_NAME = SAME_ORIGIN_CHANNEL_NAME;
+const SERVER_STATE_KEY = SAME_ORIGIN_SERVER_STATE_KEY;
 const WEBLLM_RUNTIME = {
   default: "0.2.83",
   sft: "0.2.79",
@@ -20,10 +27,6 @@ const el = {
   progressBar: document.querySelector("#progressBar"),
   progressText: document.querySelector("#progressText"),
   currentModel: document.querySelector("#currentModel"),
-  gatewayUrl: document.querySelector("#gatewayUrl"),
-  gatewayStatus: document.querySelector("#gatewayStatus"),
-  connectGateway: document.querySelector("#connectGateway"),
-  disconnectGateway: document.querySelector("#disconnectGateway"),
   logs: document.querySelector("#logs"),
   clearLogs: document.querySelector("#clearLogs"),
 };
@@ -32,8 +35,6 @@ let engine = null;
 let loadedModel = "";
 let loadedRuntime = "";
 let busy = false;
-let gatewaySocket = null;
-let gatewayConnected = false;
 const webllmModules = new Map();
 
 const channel = new BroadcastChannel(CHANNEL_NAME);
@@ -58,11 +59,8 @@ function init() {
     clearModelCache().catch((error) => logItem("error", error.message || String(error)));
   });
   el.clearLogs.addEventListener("click", () => (el.logs.innerHTML = ""));
-  el.connectGateway?.addEventListener("click", connectGateway);
-  el.disconnectGateway?.addEventListener("click", disconnectGateway);
   channel.addEventListener("message", onBridgeMessage);
   window.setInterval(announceReady, 2000);
-  connectGateway();
 }
 
 function getSelectedModel() {
@@ -291,17 +289,8 @@ async function onBridgeMessage(event) {
 }
 
 async function handleChatCompletion(id, request) {
-  await processChatCompletion(request, {
-    response: (response) => channel.postMessage({ type: "openai.response", id, response }),
-    stream: (chunk) => channel.postMessage({ type: "openai.stream", id, chunk }),
-    done: () => channel.postMessage({ type: "openai.done", id }),
-    error: (message) => sendError(id, message),
-  });
-}
-
-async function processChatCompletion(request, callbacks) {
   if (busy) {
-    callbacks.error("WebLLM is busy. Browser mode currently processes one task at a time.");
+    sendError(id, "WebLLM is busy. Browser mode currently processes one task at a time.");
     return;
   }
 
@@ -327,21 +316,21 @@ async function processChatCompletion(request, callbacks) {
     if (request.stream) {
       const chunks = await engine.chat.completions.create(engineRequest);
       for await (const chunk of chunks) {
-        callbacks.stream(chunk);
+        channel.postMessage({ type: "openai.stream", id, chunk });
         if (el.showResponses.checked) {
           logItem("stream", chunk);
         }
       }
-      callbacks.done();
+      channel.postMessage({ type: "openai.done", id });
     } else {
       const response = await engine.chat.completions.create(engineRequest);
-      callbacks.response(response);
+      channel.postMessage({ type: "openai.response", id, response });
       if (el.showResponses.checked) {
         logItem("response", response);
       }
     }
   } catch (error) {
-    callbacks.error(error.message || String(error));
+    sendError(id, error.message || String(error));
   } finally {
     busy = false;
     setStatus(loadedModel ? "Serving" : "Waiting", "ready");
@@ -351,98 +340,6 @@ async function processChatCompletion(request, callbacks) {
 function sendError(id, message) {
   logItem("error", message);
   channel.postMessage({ type: "openai.error", id, error: { message } });
-}
-
-function connectGateway() {
-  if (!el.gatewayUrl) {
-    return;
-  }
-
-  disconnectGateway();
-  setGatewayStatus("连接中...");
-
-  try {
-    gatewaySocket = new WebSocket(el.gatewayUrl.value.trim());
-  } catch (error) {
-    setGatewayStatus(`连接失败：${error.message}`);
-    return;
-  }
-
-  gatewaySocket.addEventListener("open", () => {
-    gatewayConnected = true;
-    setGatewayStatus("已连接");
-    sendGatewayStatus();
-    logItem("system", `Gateway connected: ${el.gatewayUrl.value.trim()}`);
-  });
-
-  gatewaySocket.addEventListener("message", (event) => {
-    onGatewayMessage(event.data).catch((error) => {
-      logItem("error", error.message || String(error));
-    });
-  });
-
-  gatewaySocket.addEventListener("close", () => {
-    gatewayConnected = false;
-    setGatewayStatus("未连接");
-  });
-
-  gatewaySocket.addEventListener("error", () => {
-    gatewayConnected = false;
-    setGatewayStatus("连接错误");
-  });
-}
-
-function disconnectGateway() {
-  if (gatewaySocket) {
-    gatewaySocket.close();
-  }
-  gatewaySocket = null;
-  gatewayConnected = false;
-  setGatewayStatus("未连接");
-}
-
-async function onGatewayMessage(raw) {
-  const message = JSON.parse(raw);
-  if (message.type === "gateway.hello") {
-    sendGatewayStatus();
-    return;
-  }
-
-  if (message.type === "gateway.chat.completions") {
-    await processChatCompletion(message.request || {}, {
-      response: (response) => sendGatewayMessage({ type: "gateway.response", id: message.id, response }),
-      stream: (chunk) => sendGatewayMessage({ type: "gateway.stream", id: message.id, chunk }),
-      done: () => sendGatewayMessage({ type: "gateway.done", id: message.id }),
-      error: (text) =>
-        sendGatewayMessage({
-          type: "gateway.error",
-          id: message.id,
-          error: { message: text },
-        }),
-    });
-  }
-}
-
-function sendGatewayStatus() {
-  sendGatewayMessage({
-    type: "gateway.status",
-    models: MODEL_IDS,
-    loadedModel,
-    selectedModel: getSelectedModel(),
-  });
-}
-
-function sendGatewayMessage(message) {
-  if (!gatewaySocket || gatewaySocket.readyState !== WebSocket.OPEN) {
-    return;
-  }
-  gatewaySocket.send(JSON.stringify(message));
-}
-
-function setGatewayStatus(text) {
-  if (el.gatewayStatus) {
-    el.gatewayStatus.textContent = text;
-  }
 }
 
 
@@ -456,7 +353,6 @@ function announceReady() {
   };
   localStorage.setItem(SERVER_STATE_KEY, JSON.stringify(state));
   channel.postMessage(state);
-  sendGatewayStatus();
 }
 
 function setStatus(text, state) {

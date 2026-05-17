@@ -1,5 +1,3 @@
-import { CHANNEL_NAME, MODEL_IDS } from "./models.js";
-
 const el = {
   clientStatus: document.querySelector("#clientStatus"),
   baseUrl: document.querySelector("#baseUrl"),
@@ -19,25 +17,17 @@ const el = {
   rawJson: document.querySelector("#rawJson"),
 };
 
-const channel = new BroadcastChannel(CHANNEL_NAME);
-const SERVER_STATE_KEY = "webllm-serve-state";
-const pending = new Map();
-let availableModels = [...MODEL_IDS];
 let chatMessages = [];
 let lastRaw = {};
-let lastServerSeen = 0;
-let heartbeatTimer = 0;
-let serverLoadedModel = "";
+let loadedModel = "";
 
 function init() {
   renderMessages();
-  updateConnectionStatus();
-  channel.addEventListener("message", onBridgeMessage);
-  readServerSnapshot();
-  connectServer();
+  setRaw({});
+  checkGateway();
 
-  el.connectServer.addEventListener("click", connectServer);
-  el.refreshModels.addEventListener("click", refreshServerStatus);
+  el.connectServer.addEventListener("click", checkGateway);
+  el.refreshModels.addEventListener("click", refreshModels);
   el.clearChat.addEventListener("click", () => {
     chatMessages = [];
     renderMessages();
@@ -52,99 +42,45 @@ function init() {
   });
 }
 
-function connectServer() {
-  if (location.protocol === "file:") {
-    setStatus("请用 http://127.0.0.1 打开，file:// 页面无法稳定互联");
-    return;
-  }
-
-  setStatus("正在连接...");
-  channel.postMessage({ type: "client.hello", at: Date.now() });
-  channel.postMessage({ type: "client.ping", at: Date.now() });
-
-  window.clearInterval(heartbeatTimer);
-  heartbeatTimer = window.setInterval(() => {
-    readServerSnapshot();
-    channel.postMessage({ type: "client.ping", at: Date.now() });
-    if (lastServerSeen && Date.now() - lastServerSeen > 6000) {
-      setStatus("连接断开，请确认 server.html 仍打开");
-    }
-    if (!lastServerSeen) {
-      setStatus("未连接：请打开同源 server.html");
-    }
-  }, 2000);
-}
-
-function readServerSnapshot() {
+async function checkGateway() {
   try {
-    const state = JSON.parse(localStorage.getItem(SERVER_STATE_KEY) || "null");
-    if (!state || state.type !== "server.ready") {
-      return;
+    setStatus("正在连接...");
+    const healthUrl = `${getGatewayRoot()}/health`;
+    const response = await fetch(healthUrl);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
     }
-    if (Date.now() - Number(state.updatedAt || 0) > 10000) {
-      return;
-    }
-
-    lastServerSeen = Number(state.updatedAt) || Date.now();
-    serverLoadedModel = state.loadedModel || "";
-    if (Array.isArray(state.models)) {
-      availableModels = state.models;
-    }
-    updateConnectionStatus();
-  } catch {
-    // Ignore malformed snapshots; BroadcastChannel is the primary path.
+    const data = await response.json();
+    loadedModel = data.loaded_model || "";
+    el.serverModel.value = loadedModel || "未加载";
+    setStatus(data.bridge_connected ? statusText() : "Gateway 已启动；server.html 未连接");
+  } catch (error) {
+    loadedModel = "";
+    el.serverModel.value = "未加载";
+    setStatus(`连接失败：${error.message}`);
   }
 }
 
-function onBridgeMessage(event) {
-  const message = event.data || {};
-  if (message.type === "server.ready" || message.type === "server.pong") {
-    lastServerSeen = Date.now();
-    serverLoadedModel = message.loadedModel || "";
-    if (Array.isArray(message.models)) {
-      availableModels = message.models;
+async function refreshModels() {
+  await checkGateway();
+  try {
+    const response = await fetch(`${getBaseUrl()}/models`, {
+      headers: authHeaders(),
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
     }
-    updateConnectionStatus();
-    return;
+    const data = await response.json();
+    setRaw({ models: data });
+  } catch (error) {
+    setStatus(`刷新失败：${error.message}`);
   }
-
-  const task = pending.get(message.id);
-  if (!task) return;
-
-  if (message.type === "openai.response") {
-    task.resolve(message.response);
-    pending.delete(message.id);
-  }
-
-  if (message.type === "openai.error") {
-    task.reject(new Error(message.error?.message || "请求失败"));
-    pending.delete(message.id);
-  }
-
-  if (message.type === "openai.stream") {
-    task.onChunk?.(message.chunk);
-  }
-
-  if (message.type === "openai.done") {
-    task.resolve(task.streamResponse);
-    pending.delete(message.id);
-  }
-}
-
-function refreshServerStatus() {
-  channel.postMessage({ type: "client.hello", at: Date.now() });
-  channel.postMessage({ type: "client.ping", at: Date.now() });
 }
 
 async function submitMessage(event) {
   event.preventDefault();
   const content = el.userInput.value.trim();
   if (!content) return;
-
-  if (!serverLoadedModel) {
-    setStatus(lastServerSeen ? "服务端尚未加载模型" : "未连接：请打开同源 server.html");
-    return;
-  }
 
   el.userInput.value = "";
   chatMessages.push({ role: "user", content });
@@ -153,27 +89,45 @@ async function submitMessage(event) {
   renderMessages();
 
   const request = buildChatRequest();
-  setRaw({ request, serverModel: serverLoadedModel });
+  setRaw({ request });
 
   try {
-    if (request.stream) {
-      const response = await bridgeRequest("openai.chat.completions", request, (chunk) => {
-        const delta = chunk.choices?.[0]?.delta?.content || "";
-        assistantMessage.content += delta;
-        renderMessages();
-        setRaw({ ...lastRaw, latestChunk: chunk });
-      });
-      setRaw({ ...lastRaw, response });
-    } else {
-      const response = await bridgeRequest("openai.chat.completions", request);
-      assistantMessage.content = response.choices?.[0]?.message?.content || "";
-      renderMessages();
-      setRaw({ request, serverModel: serverLoadedModel, response });
+    const response = await fetch(`${getBaseUrl()}/chat/completions`, {
+      method: "POST",
+      headers: {
+        ...authHeaders(),
+        "content-type": "application/json",
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || `HTTP ${response.status}`);
     }
+
+    if (request.stream) {
+      const streamResult = await readSSE(response, (chunk) => {
+        const delta = chunk.choices?.[0]?.delta?.content || "";
+        if (delta) {
+          assistantMessage.content += delta;
+          renderMessages();
+          setRaw({ ...lastRaw, latestChunk: chunk });
+        }
+      });
+      setRaw({ ...lastRaw, response: streamResult });
+    } else {
+      const data = await response.json();
+      assistantMessage.content = data.choices?.[0]?.message?.content || "";
+      renderMessages();
+      setRaw({ request, response: data });
+    }
+
+    await checkGateway();
   } catch (error) {
     assistantMessage.content = `请求失败：${error.message}`;
     renderMessages();
-    setRaw({ request, serverModel: serverLoadedModel, error: error.message });
+    setRaw({ request, error: error.message });
   }
 }
 
@@ -194,23 +148,52 @@ function buildChatRequest() {
   };
 }
 
-function bridgeRequest(type, request, onChunk) {
-  const id = crypto.randomUUID();
-  return new Promise((resolve, reject) => {
-    pending.set(id, {
-      resolve,
-      reject,
-      onChunk,
-      streamResponse: { id, object: "chat.completion.stream", done: true },
-    });
-    channel.postMessage({ type, id, request });
-    window.setTimeout(() => {
-      if (pending.has(id)) {
-        pending.delete(id);
-        reject(new Error("等待服务端响应超时，请确认 server.html 已打开。"));
-      }
-    }, 600000);
-  });
+async function readSSE(response, onChunk) {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    let boundary = buffer.indexOf("\n\n");
+    while (boundary !== -1) {
+      const eventText = buffer.slice(0, boundary);
+      buffer = buffer.slice(boundary + 2);
+      handleSSEEvent(eventText, onChunk);
+      boundary = buffer.indexOf("\n\n");
+    }
+  }
+
+  if (buffer.trim()) {
+    handleSSEEvent(buffer, onChunk);
+  }
+
+  return { object: "chat.completion.stream", done: true };
+}
+
+function handleSSEEvent(eventText, onChunk) {
+  for (const line of eventText.split(/\r?\n/)) {
+    if (!line.startsWith("data:")) continue;
+    const data = line.slice(5).trim();
+    if (!data || data === "[DONE]") continue;
+    onChunk(JSON.parse(data));
+  }
+}
+
+function getBaseUrl() {
+  return el.baseUrl.value.trim().replace(/\/$/, "");
+}
+
+function getGatewayRoot() {
+  return getBaseUrl().replace(/\/v1$/, "");
+}
+
+function authHeaders() {
+  const key = el.apiKey.value.trim();
+  return key ? { authorization: `Bearer ${key}` } : {};
 }
 
 function renderMessages() {
@@ -218,7 +201,7 @@ function renderMessages() {
   if (!chatMessages.length) {
     const empty = document.createElement("div");
     empty.className = "empty-state";
-    empty.textContent = "服务端页面加载模型后，在这里开始对话。";
+    empty.textContent = "启动 Go gateway 并连接 server.html 后，在这里开始对话。";
     el.messages.append(empty);
     return;
   }
@@ -234,25 +217,13 @@ function renderMessages() {
   el.messages.scrollTop = el.messages.scrollHeight;
 }
 
+function statusText() {
+  return loadedModel ? `已连接：${loadedModel}` : "已连接；服务端未加载模型";
+}
+
 function setStatus(text) {
   el.clientStatus.textContent = text;
   el.clientStatus.title = text;
-}
-
-function updateConnectionStatus() {
-  el.serverModel.value = serverLoadedModel || "未加载";
-
-  if (!lastServerSeen) {
-    setStatus("未连接");
-    return;
-  }
-
-  if (!serverLoadedModel) {
-    setStatus("已连接；服务端未加载模型");
-    return;
-  }
-
-  setStatus(`已连接：${serverLoadedModel}`);
 }
 
 function setRaw(value) {
@@ -261,3 +232,4 @@ function setRaw(value) {
 }
 
 init();
+

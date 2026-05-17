@@ -3,26 +3,26 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>WebLLM Serve - HTTP Client</title>
+    <title>WebLLM Serve - Same-Origin Client</title>
     <link rel="stylesheet" href="./src/styles.css" />
   </head>
   <body>
     <main class="chat-shell">
       <aside class="settings panel">
         <div class="panel-title">
-          <h1>HTTP 客户端</h1>
+          <h1>同源客户端</h1>
           <span id="clientStatus" class="status-dot">未连接</span>
         </div>
         <label class="field">
           <span>Base URL</span>
-          <input id="baseUrl" value="http://127.0.0.1:21434/v1" />
+          <input id="baseUrl" value="browser://webllm-openai-bridge/v1" readonly />
         </label>
         <label class="field">
           <span>API Key</span>
           <input id="apiKey" value="webllm-local" />
         </label>
         <label class="field">
-          <span>Gateway 已加载模型</span>
+          <span>服务端已加载模型</span>
           <input id="serverModel" value="未加载" readonly />
         </label>
         <label class="field">
@@ -53,12 +53,12 @@
           </label>
         </div>
         <div class="action-row">
-          <button id="connectServer" class="button primary" type="button">检查 Gateway</button>
-          <button id="refreshModels" class="button secondary" type="button">刷新模型</button>
+          <button id="connectServer" class="button primary" type="button">连接服务端</button>
+          <button id="refreshModels" class="button secondary" type="button">刷新状态</button>
           <button id="clearChat" class="button secondary" type="button">清空对话</button>
         </div>
         <p class="small-note">
-          此页面通过标准 OpenAI HTTP API 调用本地 Go gateway，因此不要求和 server.html 同源。
+          这是保留的同源 BroadcastChannel 版本，只使用 server-same-origin.html 当前已加载的模型。
         </p>
       </aside>
 
@@ -75,6 +75,7 @@
       </section>
     </main>
 
-    <script type="module" src="./src/client.js"></script>
+    <script type="module" src="./src/client-same-origin.js"></script>
   </body>
 </html>
+

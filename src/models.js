@@ -1,4 +1,7 @@
 export const CHANNEL_NAME = "webllm-openai-bridge";
+export const SAME_ORIGIN_CHANNEL_NAME = "webllm-openai-bridge-same-origin";
+export const SERVER_STATE_KEY = "webllm-serve-state";
+export const SAME_ORIGIN_SERVER_STATE_KEY = "webllm-serve-state-same-origin";
 
 export const MODEL_IDS = [
   "Qwen3.5-0.8B-q4f16_1-MLC",

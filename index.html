@@ -12,19 +12,20 @@
         <p class="eyebrow">WebLLM Serve</p>
         <h1>浏览器里的本地模型服务台</h1>
         <p class="lede">
-          先打开服务端控制台加载 WebLLM 模型，再打开客户端用 OpenAI 格式消息对话。
+          主线版本通过 Go gateway 提供 OpenAI 兼容 HTTP API，服务端页面负责在浏览器内运行 WebLLM。
         </p>
         <div class="home-actions">
           <a class="button primary" href="./server.html">打开服务端</a>
-          <a class="button secondary" href="./client.html">打开客户端</a>
+          <a class="button secondary" href="./client.html">打开 HTTP 客户端</a>
+          <a class="button secondary" href="./server-same-origin.html">同源服务端</a>
+          <a class="button secondary" href="./client-same-origin.html">同源客户端</a>
         </div>
       </section>
       <section class="note-band">
-        <strong>提示：</strong>纯网页不能监听 localhost HTTP 端口。本版本用
-        BroadcastChannel 在同源页面之间传递 OpenAI 风格请求；真正的
-        `/v1/chat/completions` HTTP 服务会放在后续桌面/网关版本中。
+        <strong>提示：</strong>运行 <code>go run ./gateway</code> 后，可通过
+        <code>http://127.0.0.1:21434/v1</code> 使用 OpenAI API。同源页面保留为
+        BroadcastChannel 验证版本。
       </section>
     </main>
   </body>
 </html>
-
