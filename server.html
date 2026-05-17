@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WebLLM Serve - Server</title>
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Server Console</p>
+          <h1>WebLLM 服务端</h1>
+        </div>
+        <div class="status-pill" id="serverStatus">初始化中</div>
+      </header>
+
+      <section class="control-grid">
+        <div class="panel model-panel">
+          <div class="panel-title">
+            <h2>模型</h2>
+            <span id="webgpuStatus" class="muted">检测 WebGPU...</span>
+          </div>
+          <label class="field">
+            <span>预置模型</span>
+            <select id="modelSelect"></select>
+          </label>
+          <label class="field">
+            <span>自定义模型 ID 或 URL</span>
+            <input id="customModel" placeholder="可选：输入 model_id 或 HF resolve URL" />
+          </label>
+          <div class="switch-row">
+            <label><input id="autoDownload" type="checkbox" checked /> 请求时自动加载模型</label>
+            <label><input id="showRequests" type="checkbox" checked /> 显示请求</label>
+            <label><input id="showResponses" type="checkbox" checked /> 显示响应</label>
+          </div>
+          <div class="action-row">
+            <button id="loadModel" class="button primary" type="button">加载模型</button>
+            <button id="unloadModel" class="button secondary" type="button">释放引用</button>
+          </div>
+          <div class="progress-track">
+            <div id="progressBar"></div>
+          </div>
+          <p id="progressText" class="muted">尚未加载模型</p>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title">
+            <h2>服务</h2>
+          </div>
+          <dl class="info-list">
+            <div>
+              <dt>通信方式</dt>
+              <dd>BroadcastChannel: <code>webllm-openai-bridge</code></dd>
+            </div>
+            <div>
+              <dt>兼容接口</dt>
+              <dd><code>/v1/models</code>, <code>/v1/chat/completions</code> 形状</dd>
+            </div>
+            <div>
+              <dt>当前模型</dt>
+              <dd id="currentModel">未加载</dd>
+            </div>
+          </dl>
+          <p class="small-note">
+            保持此页面打开。客户端页面会把 OpenAI 格式请求发到这里，由 WebLLM 在浏览器内执行。
+          </p>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title">
+          <h2>请求与响应</h2>
+          <button id="clearLogs" class="button secondary compact" type="button">清空</button>
+        </div>
+        <div id="logs" class="logs"></div>
+      </section>
+    </main>
+
+    <script type="module" src="./src/server.js"></script>
+  </body>
+</html>
+

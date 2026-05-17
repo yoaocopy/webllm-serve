@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WebLLM Serve - Client</title>
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <main class="chat-shell">
+      <aside class="settings panel">
+        <div class="panel-title">
+          <h1>客户端</h1>
+          <span id="clientStatus" class="status-dot">未连接</span>
+        </div>
+        <label class="field">
+          <span>Base URL</span>
+          <input id="baseUrl" value="browser://webllm-openai-bridge/v1" readonly />
+        </label>
+        <label class="field">
+          <span>API Key</span>
+          <input id="apiKey" value="webllm-local" />
+        </label>
+        <label class="field">
+          <span>服务端已加载模型</span>
+          <input id="serverModel" value="未加载" readonly />
+        </label>
+        <label class="field">
+          <span>System Prompt</span>
+          <textarea id="systemPrompt" rows="5">You are a helpful assistant.</textarea>
+        </label>
+        <div class="two-col">
+          <label class="field">
+            <span>Max Tokens</span>
+            <input id="maxTokens" type="number" min="1" max="8192" value="512" />
+          </label>
+          <label class="field">
+            <span>Temperature</span>
+            <input id="temperature" type="number" min="0" max="2" step="0.1" value="0.7" />
+          </label>
+        </div>
+        <div class="two-col">
+          <label class="field">
+            <span>Top P</span>
+            <input id="topP" type="number" min="0" max="1" step="0.05" value="0.8" />
+          </label>
+          <label class="field">
+            <span>Stream</span>
+            <select id="stream">
+              <option value="true">开启</option>
+              <option value="false">关闭</option>
+            </select>
+          </label>
+        </div>
+        <div class="action-row">
+          <button id="connectServer" class="button primary" type="button">连接服务端</button>
+          <button id="refreshModels" class="button secondary" type="button">刷新状态</button>
+          <button id="clearChat" class="button secondary" type="button">清空对话</button>
+        </div>
+        <p class="small-note">
+          客户端不选择模型，只使用 server.html 当前已加载的模型。两个页面必须同源。
+        </p>
+      </aside>
+
+      <section class="chat-main panel">
+        <div id="messages" class="messages"></div>
+        <form id="chatForm" class="composer">
+          <textarea id="userInput" rows="3" placeholder="输入消息，Enter 发送，Shift+Enter 换行"></textarea>
+          <button class="button primary" type="submit">发送</button>
+        </form>
+        <details class="raw-box">
+          <summary>原始 OpenAI 请求/响应</summary>
+          <pre id="rawJson"></pre>
+        </details>
+      </section>
+    </main>
+
+    <script type="module" src="./src/client.js"></script>
+  </body>
+</html>

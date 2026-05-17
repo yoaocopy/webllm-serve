@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WebLLM Serve</title>
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <main class="home-shell">
+      <section class="home-hero">
+        <p class="eyebrow">WebLLM Serve</p>
+        <h1>浏览器里的本地模型服务台</h1>
+        <p class="lede">
+          先打开服务端控制台加载 WebLLM 模型，再打开客户端用 OpenAI 格式消息对话。
+        </p>
+        <div class="home-actions">
+          <a class="button primary" href="./server.html">打开服务端</a>
+          <a class="button secondary" href="./client.html">打开客户端</a>
+        </div>
+      </section>
+      <section class="note-band">
+        <strong>提示：</strong>纯网页不能监听 localhost HTTP 端口。本版本用
+        BroadcastChannel 在同源页面之间传递 OpenAI 风格请求；真正的
+        `/v1/chat/completions` HTTP 服务会放在后续桌面/网关版本中。
+      </section>
+    </main>
+  </body>
+</html>
+
