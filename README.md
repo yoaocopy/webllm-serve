@@ -6,23 +6,31 @@ gateway exposes local HTTP APIs for clients, CLI tools, and SDKs.
 
 ## Quick Start
 
-From the repository or release folder root:
+If you cloned the repository and have Go installed, run from the repository
+root:
 
 ```bash
 go run ./gateway
 ```
 
-Or run a built binary:
+If you downloaded a generated release package, enter that package folder and run
+the included binary.
+
+macOS/Linux release package:
 
 ```bash
-./webllm-gateway-linux-amd64
+./webllm-gateway
 ```
 
-On Windows:
+Windows release package:
 
 ```powershell
-.\webllm-gateway-windows-amd64.exe
+.\webllm-gateway.exe
 ```
+
+If you cloned the repository but have not built binaries yet, the release
+package binaries above will not exist. Build them first with the commands in
+the [Build Gateway Binaries](#build-gateway-binaries) section.
 
 The gateway prints the actual URLs at startup. Use those printed URLs as the
 source of truth, especially if the default port is already occupied.
@@ -73,14 +81,22 @@ the actual selected gateway port automatically.
 
 To force a specific port:
 
+From source:
+
 ```bash
-./webllm-gateway-linux-amd64 -addr 127.0.0.1:21440
+go run ./gateway -- -addr 127.0.0.1:21440
 ```
 
-On Windows:
+From a macOS/Linux release package:
+
+```bash
+./webllm-gateway -addr 127.0.0.1:21440
+```
+
+From a Windows release package:
 
 ```powershell
-.\webllm-gateway-windows-amd64.exe -addr 127.0.0.1:21440
+.\webllm-gateway.exe -addr 127.0.0.1:21440
 ```
 
 ## Build Gateway Binaries
@@ -110,14 +126,36 @@ Cross-compile common release targets from Windows PowerShell:
 powershell -ExecutionPolicy Bypass -File scripts/build-gateway.ps1
 ```
 
-The scripts output binaries into `dist/`:
+By default, the scripts build three practical release targets:
 
 - `webllm-gateway-windows-amd64.exe`
-- `webllm-gateway-windows-arm64.exe`
-- `webllm-gateway-darwin-amd64`
 - `webllm-gateway-darwin-arm64`
 - `webllm-gateway-linux-amd64`
-- `webllm-gateway-linux-arm64`
+
+They also create runnable platform packages under `release/`:
+
+- `release/webllm-serve-windows-amd64/`
+- `release/webllm-serve-macos-arm64/`
+- `release/webllm-serve-linux-amd64/`
+
+Each package contains the matching gateway binary plus `index.html`, the server
+and client pages, and `src/`. A user can download one package folder and run the
+gateway directly from that folder.
+
+Optional targets are kept in the build scripts but disabled by default to reduce
+artifact size. To build every configured target:
+
+macOS/Linux:
+
+```bash
+ALL_TARGETS=1 sh scripts/build-gateway.sh
+```
+
+Windows PowerShell:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts/build-gateway.ps1 -AllTargets
+```
 
 ## Using Built Binaries
 
@@ -125,24 +163,7 @@ The gateway executable serves the HTML/CSS/JS files from its current working
 directory. Do not distribute only the gateway binary unless you also embed or
 otherwise provide the static files.
 
-Recommended release layout:
-
-```text
-webllm-serve-release/
-  webllm-gateway-windows-amd64.exe
-  webllm-gateway-darwin-arm64
-  webllm-gateway-linux-amd64
-  index.html
-  server.html
-  client.html
-  server-same-origin.html
-  client-same-origin.html
-  src/
-  README.md
-```
-
-For a platform-specific package, include only the matching binary plus the
-static files. For example, a Windows x64 package can look like:
+Recommended package layout:
 
 ```text
 webllm-serve-windows-amd64/
@@ -156,22 +177,67 @@ webllm-serve-windows-amd64/
   README.md
 ```
 
-Run the binary from that folder:
+The generated `release/` folders already follow this layout. For example:
 
-```bash
-./webllm-gateway-linux-amd64
+```text
+release/
+  webllm-serve-windows-amd64/
+    webllm-gateway.exe
+    index.html
+    server.html
+    client.html
+    server-same-origin.html
+    client-same-origin.html
+    src/
+    README.md
+
+  webllm-serve-macos-arm64/
+    webllm-gateway
+    index.html
+    ...
+
+  webllm-serve-linux-amd64/
+    webllm-gateway
+    index.html
+    ...
 ```
 
-On macOS:
+Run the binary from the matching release package folder.
 
-```bash
-./webllm-gateway-darwin-arm64
-```
-
-On Windows:
+Windows:
 
 ```powershell
+cd release\webllm-serve-windows-amd64
 .\webllm-gateway.exe
+```
+
+macOS:
+
+```bash
+cd release/webllm-serve-macos-arm64
+./webllm-gateway
+```
+
+Linux:
+
+```bash
+cd release/webllm-serve-linux-amd64
+./webllm-gateway
+```
+
+If you manually create a package, include only the matching binary plus the
+static files. For example, a Windows x64 package can look like:
+
+```text
+webllm-serve-windows-amd64/
+  webllm-gateway.exe
+  index.html
+  server.html
+  client.html
+  server-same-origin.html
+  client-same-origin.html
+  src/
+  README.md
 ```
 
 Then open the URLs printed by the gateway. If the binary is launched from
@@ -502,4 +568,3 @@ Failed to store ...tensor-cache.json with error: Network response was not ok
 Usually means the model weight manifest URL is not reachable or the model path
 is wrong. For a valid Hugging Face model, first verify the `model` URL and
 runtime/model_lib compatibility before changing hosts.
-
