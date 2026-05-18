@@ -412,6 +412,22 @@ The server does not override client sampling parameters. Values such as
 `temperature`, `top_p`, `max_tokens`, and `stop` come from `client.html` or the
 request payload.
 
+## Language Switching
+
+The main pages support Chinese and English without a build step:
+
+- `index.html`
+- `server.html`
+- `client.html`
+
+Translations live in `src/i18n.js`. Static page text uses `data-i18n` attributes,
+and dynamic JavaScript messages use the shared `t(key)` helper. The selected
+language is stored in `localStorage`, so changing it on one main page also
+applies to the other main pages.
+
+When adding new UI text, add a key to both `zh` and `en` in `src/i18n.js`, then
+reference it from HTML with `data-i18n="key"` or from JavaScript with `t("key")`.
+
 ## Model Loading Notes
 
 This project has a few model-specific compatibility rules. Keep these in mind

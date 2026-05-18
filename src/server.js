@@ -1,4 +1,5 @@
 import { CHANNEL_NAME, CUSTOM_MODEL_RECORDS, MODEL_IDS, SERVER_STATE_KEY } from "./models.js";
+import { mountLanguageSelect, t } from "./i18n.js";
 
 const SFT_MODEL_ID = "sft_model_1.5B-q4f16_1-MLC (Hugging Face)";
 const WEBLLM_RUNTIME = {
@@ -40,6 +41,7 @@ const webllmModules = new Map();
 const channel = new BroadcastChannel(CHANNEL_NAME);
 
 function init() {
+  mountLanguageSelect();
   for (const model of MODEL_IDS) {
     const option = document.createElement("option");
     option.value = model;
@@ -47,8 +49,8 @@ function init() {
     el.modelSelect.append(option);
   }
 
-  el.webgpuStatus.textContent = navigator.gpu ? "WebGPU available" : "WebGPU unavailable";
-  setStatus("Waiting", "ready");
+  updateWebGPUStatus();
+  setStatus(t("waiting"), "ready");
   announceReady();
 
   el.loadModel.addEventListener("click", () => {
@@ -61,6 +63,7 @@ function init() {
   el.clearLogs.addEventListener("click", () => (el.logs.innerHTML = ""));
   el.connectGateway?.addEventListener("click", connectGateway);
   el.disconnectGateway?.addEventListener("click", disconnectGateway);
+  window.addEventListener("webllm-language-change", refreshLocalizedState);
   channel.addEventListener("message", onBridgeMessage);
   window.setInterval(announceReady, 2000);
   initGatewayConfig().finally(connectGateway);
@@ -86,6 +89,20 @@ async function initGatewayConfig() {
   } catch {
     // Static deployments may not have a generated gateway config.
   }
+}
+
+function updateWebGPUStatus() {
+  el.webgpuStatus.textContent = navigator.gpu ? t("webgpuAvailable") : t("webgpuUnavailable");
+}
+
+function refreshLocalizedState() {
+  updateWebGPUStatus();
+  if (!loadedModel) {
+    el.currentModel.textContent = t("notLoaded");
+    el.progressText.textContent = t("progressIdle");
+  }
+  setGatewayStatus(gatewayConnected ? t("gatewayConnected") : t("disconnected"));
+  setStatus(busy ? t("generating") : loadedModel ? t("serving") : t("waiting"), busy ? "busy" : "ready");
 }
 
 function getSelectedModel() {
@@ -186,8 +203,8 @@ async function loadModel(modelId) {
   }
 
   busy = true;
-  setStatus("Loading", "busy");
-  setProgress(0, `Loading ${modelId}`);
+  setStatus(t("loading"), "busy");
+  setProgress(0, t("loadProgress", { model: modelId }));
 
   try {
     const webllm = await getWebLLM(modelId);
@@ -196,7 +213,7 @@ async function loadModel(modelId) {
       appConfig: makeAppConfig(webllm, modelId),
       initProgressCallback: (progress) => {
         const percent = Math.round((progress.progress || 0) * 100);
-        setProgress(percent, progress.text || `Loading ${percent}%`);
+        setProgress(percent, progress.text || `${t("loading")} ${percent}%`);
       },
     };
     const chatOptions = getReloadOptions(modelId);
@@ -209,12 +226,12 @@ async function loadModel(modelId) {
 
     loadedModel = modelId;
     el.currentModel.textContent = modelId;
-    setProgress(100, `${modelId} loaded`);
-    setStatus("Serving", "ready");
-    logItem("system", `Loaded model: ${modelId}`);
+    setProgress(100, t("loadedProgress", { model: modelId }));
+    setStatus(t("serving"), "ready");
+    logItem("system", t("loadedLog", { model: modelId }));
     announceReady();
   } catch (error) {
-    setStatus("Load failed", "error");
+    setStatus(t("loadFailed"), "error");
     logItem("error", error.message || String(error));
     throw error;
   } finally {
@@ -226,15 +243,15 @@ function unloadModel() {
   engine = null;
   loadedModel = "";
   loadedRuntime = "";
-  el.currentModel.textContent = "Not loaded";
-  setProgress(0, "Engine reference released. Browser model cache is kept.");
-  setStatus("Waiting", "ready");
+  el.currentModel.textContent = t("notLoaded");
+  setProgress(0, t("releasedProgress"));
+  setStatus(t("waiting"), "ready");
   announceReady();
 }
 
 async function clearModelCache() {
   if (busy) {
-    throw new Error("WebLLM is busy. Please clear cache after loading or generation finishes.");
+    throw new Error(t("clearBusyError"));
   }
 
   unloadModel();
@@ -261,8 +278,8 @@ async function clearModelCache() {
     );
   }
 
-  setProgress(0, "Browser model caches cleared. Reload the model to download it again.");
-  logItem("system", "Browser Cache API and IndexedDB model caches were cleared for this origin.");
+  setProgress(0, t("cacheClearedProgress"));
+  logItem("system", t("cacheClearedLog"));
 }
 
 function getReloadOptions(modelId) {
@@ -329,7 +346,7 @@ async function processChatCompletion(request, callbacks) {
   }
 
   busy = true;
-  setStatus("Generating", "busy");
+  setStatus(t("generating"), "busy");
 
   try {
     const requestedModel = request.model || loadedModel || getSelectedModel();
@@ -367,7 +384,7 @@ async function processChatCompletion(request, callbacks) {
     callbacks.error(error.message || String(error));
   } finally {
     busy = false;
-    setStatus(loadedModel ? "Serving" : "Waiting", "ready");
+    setStatus(loadedModel ? t("serving") : t("waiting"), "ready");
   }
 }
 
@@ -382,18 +399,18 @@ function connectGateway() {
   }
 
   disconnectGateway();
-  setGatewayStatus("连接中...");
+  setGatewayStatus(t("gatewayConnecting"));
 
   try {
     gatewaySocket = new WebSocket(el.gatewayUrl.value.trim());
   } catch (error) {
-    setGatewayStatus(`连接失败：${error.message}`);
+    setGatewayStatus(t("gatewayConnectFailed", { message: error.message }));
     return;
   }
 
   gatewaySocket.addEventListener("open", () => {
     gatewayConnected = true;
-    setGatewayStatus("已连接");
+    setGatewayStatus(t("gatewayConnected"));
     sendGatewayStatus();
     logItem("system", `Gateway connected: ${el.gatewayUrl.value.trim()}`);
   });
@@ -406,12 +423,12 @@ function connectGateway() {
 
   gatewaySocket.addEventListener("close", () => {
     gatewayConnected = false;
-    setGatewayStatus("未连接");
+    setGatewayStatus(t("disconnected"));
   });
 
   gatewaySocket.addEventListener("error", () => {
     gatewayConnected = false;
-    setGatewayStatus("连接错误");
+    setGatewayStatus(t("gatewayError"));
   });
 }
 
@@ -421,7 +438,7 @@ function disconnectGateway() {
   }
   gatewaySocket = null;
   gatewayConnected = false;
-  setGatewayStatus("未连接");
+  setGatewayStatus(t("disconnected"));
 }
 
 async function onGatewayMessage(raw) {

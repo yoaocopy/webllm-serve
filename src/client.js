@@ -1,3 +1,5 @@
+import { mountLanguageSelect, t } from "./i18n.js";
+
 const el = {
   clientStatus: document.querySelector("#clientStatus"),
   baseUrl: document.querySelector("#baseUrl"),
@@ -20,8 +22,11 @@ const el = {
 let chatMessages = [];
 let lastRaw = {};
 let loadedModel = "";
+let gatewayReachable = false;
+let bridgeConnected = false;
 
 function init() {
+  mountLanguageSelect();
   renderMessages();
   setRaw({});
   initGatewayConfig().finally(checkGateway);
@@ -39,6 +44,13 @@ function init() {
       event.preventDefault();
       el.chatForm.requestSubmit();
     }
+  });
+  window.addEventListener("webllm-language-change", () => {
+    renderMessages();
+    if (!loadedModel) {
+      el.serverModel.value = t("notLoaded");
+    }
+    setStatus(languageAwareStatus());
   });
 }
 
@@ -59,20 +71,24 @@ async function initGatewayConfig() {
 
 async function checkGateway() {
   try {
-    setStatus("正在连接...");
+    setStatus(t("checkingGateway"));
     const healthUrl = `${getGatewayRoot()}/health`;
     const response = await fetch(healthUrl);
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
     const data = await response.json();
+    gatewayReachable = true;
+    bridgeConnected = Boolean(data.bridge_connected);
     loadedModel = data.loaded_model || "";
-    el.serverModel.value = loadedModel || "未加载";
-    setStatus(data.bridge_connected ? statusText() : "Gateway 已启动；server.html 未连接");
+    el.serverModel.value = loadedModel || t("notLoaded");
+    setStatus(bridgeConnected ? statusText() : t("gatewayNeedsServer"));
   } catch (error) {
+    gatewayReachable = false;
+    bridgeConnected = false;
     loadedModel = "";
-    el.serverModel.value = "未加载";
-    setStatus(`连接失败：${error.message}`);
+    el.serverModel.value = t("notLoaded");
+    setStatus(t("gatewayCheckFailed", { message: error.message }));
   }
 }
 
@@ -88,7 +104,7 @@ async function refreshModels() {
     const data = await response.json();
     setRaw({ models: data });
   } catch (error) {
-    setStatus(`刷新失败：${error.message}`);
+    setStatus(t("modelsFetchFailed", { message: error.message }));
   }
 }
 
@@ -140,7 +156,7 @@ async function submitMessage(event) {
 
     await checkGateway();
   } catch (error) {
-    assistantMessage.content = `请求失败：${error.message}`;
+    assistantMessage.content = t("requestFailed", { message: error.message });
     renderMessages();
     setRaw({ request, error: error.message });
   }
@@ -216,7 +232,7 @@ function renderMessages() {
   if (!chatMessages.length) {
     const empty = document.createElement("div");
     empty.className = "empty-state";
-    empty.textContent = "启动 Go gateway 并连接 server.html 后，在这里开始对话。";
+    empty.textContent = t("emptyChat");
     el.messages.append(empty);
     return;
   }
@@ -226,14 +242,23 @@ function renderMessages() {
     item.className = `message ${message.role}`;
     item.innerHTML = `<strong></strong><div></div>`;
     item.querySelector("strong").textContent = message.role;
-    item.querySelector("div").textContent = message.content || "生成中...";
+    item.querySelector("div").textContent = message.content || t("thinking");
     el.messages.append(item);
   }
   el.messages.scrollTop = el.messages.scrollHeight;
 }
 
 function statusText() {
-  return loadedModel ? `已连接：${loadedModel}` : "已连接；服务端未加载模型";
+  return loadedModel
+    ? t("clientConnectedWithModel", { model: loadedModel })
+    : t("clientConnectedNoModel");
+}
+
+function languageAwareStatus() {
+  if (!gatewayReachable) {
+    return t("disconnected");
+  }
+  return bridgeConnected ? statusText() : t("gatewayNeedsServer");
 }
 
 function setStatus(text) {

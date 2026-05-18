@@ -11,53 +11,62 @@
       <header class="topbar">
         <div>
           <p class="eyebrow">Server Console</p>
-          <h1>WebLLM 服务端</h1>
+          <h1 data-i18n="serverTitle">WebLLM 服务端</h1>
         </div>
-        <div class="status-pill" id="serverStatus">初始化中</div>
+        <div class="topbar-actions">
+          <label class="language-inline">
+            <span data-i18n="languageLabel">语言</span>
+            <select id="languageSelect">
+              <option value="zh" data-i18n="chinese">中文</option>
+              <option value="en" data-i18n="english">English</option>
+            </select>
+          </label>
+          <div class="status-pill" id="serverStatus" data-i18n="serverInitialStatus">准备中</div>
+        </div>
       </header>
 
       <section class="control-grid">
         <div class="panel model-panel">
           <div class="panel-title">
-            <h2>模型</h2>
-            <span id="webgpuStatus" class="muted">检测 WebGPU...</span>
+            <h2 data-i18n="modelPanelTitle">模型</h2>
+            <span id="webgpuStatus" class="muted" data-i18n="checkWebGPU">检查 WebGPU...</span>
           </div>
           <label class="field">
-            <span>预置模型</span>
+            <span data-i18n="modelSelectLabel">选择模型</span>
             <select id="modelSelect"></select>
           </label>
           <label class="field">
-            <span>自定义模型 ID 或 URL</span>
-            <input id="customModel" placeholder="可选：输入 model_id 或 HF URL" />
+            <span data-i18n="customModelLabel">自定义模型 ID 或 URL</span>
+            <input id="customModel" data-i18n-placeholder="customModelPlaceholder" placeholder="可选：输入 model_id 或 Hugging Face URL" />
           </label>
           <div class="switch-row">
-            <label><input id="autoDownload" type="checkbox" checked /> 请求时自动加载模型</label>
-            <label><input id="showRequests" type="checkbox" checked /> 显示请求</label>
-            <label><input id="showResponses" type="checkbox" checked /> 显示响应</label>
+            <label><input id="autoDownload" type="checkbox" checked /> <span data-i18n="autoDownloadLabel">请求未加载模型时自动加载</span></label>
+            <label><input id="showRequests" type="checkbox" checked /> <span data-i18n="showRequestsLabel">显示请求</span></label>
+            <label><input id="showResponses" type="checkbox" checked /> <span data-i18n="showResponsesLabel">显示返回</span></label>
           </div>
           <div class="action-row">
-            <button id="loadModel" class="button primary" type="button">加载模型</button>
-            <button id="unloadModel" class="button secondary" type="button">释放引用</button>
-            <button id="clearModelCache" class="button secondary" type="button">清理模型缓存</button>
+            <button id="loadModel" class="button primary" type="button" data-i18n="loadModelButton">加载模型</button>
+            <button id="unloadModel" class="button secondary" type="button" data-i18n="unloadModelButton">卸载引用</button>
+            <button id="clearModelCache" class="button secondary" type="button" data-i18n="clearModelCacheButton">清理模型缓存</button>
           </div>
           <div class="progress-track">
             <div id="progressBar"></div>
           </div>
-          <p id="progressText" class="muted">尚未加载模型</p>
+          <p id="progressText" class="muted" data-i18n="progressIdle">尚未加载模型</p>
         </div>
 
         <div class="panel">
           <div class="panel-title">
-            <h2>本地 Gateway</h2>
-            <span id="gatewayStatus" class="muted">未连接</span>
+            <h2 data-i18n="gatewayPanelTitle">本地 Gateway</h2>
+            <span id="gatewayStatus" class="muted" data-i18n="disconnected">未连接</span>
           </div>
           <label class="field">
-            <span>Gateway WebSocket</span>
+            <span data-i18n="gatewayWsLabel">Gateway WebSocket</span>
             <input id="gatewayUrl" value="ws://127.0.0.1:21434/bridge" />
           </label>
           <div class="action-row">
-            <button id="connectGateway" class="button primary" type="button">连接 Gateway</button>
-            <button id="disconnectGateway" class="button secondary" type="button">断开</button>
+            <button id="connectGateway" class="button primary" type="button" data-i18n="connectGatewayButton">连接 Gateway</button>
+            <button id="disconnectGateway" class="button secondary" type="button" data-i18n="disconnectGatewayButton">断开</button>
           </div>
           <dl class="info-list">
             <div>
@@ -65,20 +74,20 @@
               <dd><code id="gatewayApiUrl">http://127.0.0.1:21434/v1</code></dd>
             </div>
             <div>
-              <dt>当前模型</dt>
-              <dd id="currentModel">未加载</dd>
+              <dt data-i18n="currentModelLabel">当前模型</dt>
+              <dd id="currentModel" data-i18n="notLoaded">未加载</dd>
             </div>
           </dl>
-          <p class="small-note">
-            保持此页面打开。Go gateway 接收 OpenAI HTTP 请求，再通过 WebSocket 把请求转给此页面中的 WebLLM。
+          <p class="small-note" data-i18n="gatewayNote">
+            这里连接 Go gateway。外部 OpenAI HTTP 请求会经 WebSocket 转发到本页运行的 WebLLM。
           </p>
         </div>
       </section>
 
       <section class="panel">
         <div class="panel-title">
-          <h2>请求与响应</h2>
-          <button id="clearLogs" class="button secondary compact" type="button">清空</button>
+          <h2 data-i18n="logsTitle">请求和返回记录</h2>
+          <button id="clearLogs" class="button secondary compact" type="button" data-i18n="clearButton">清空</button>
         </div>
         <div id="logs" class="logs"></div>
       </section>

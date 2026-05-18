@@ -8,24 +8,34 @@
   </head>
   <body>
     <main class="home-shell">
+      <nav class="language-bar" aria-label="Language">
+        <label>
+          <span data-i18n="languageLabel">语言</span>
+          <select id="languageSelect">
+            <option value="zh" data-i18n="chinese">中文</option>
+            <option value="en" data-i18n="english">English</option>
+          </select>
+        </label>
+      </nav>
+
       <section class="home-hero">
         <div class="home-hero-copy">
           <p class="eyebrow">WebLLM Serve</p>
-          <h1>浏览器里的本地模型服务台</h1>
-          <p class="lede">
+          <h1 data-i18n="homeTitle">浏览器里的本地模型服务台</h1>
+          <p class="lede" data-i18n="homeLead">
             先启动 Go gateway，再按照终端中打印的主页地址打开本页面。页面会尝试读取 gateway
             生成的配置并显示实际端口；如果端口显示和终端日志不同，请以 gateway 启动日志为准。
           </p>
           <div class="home-actions">
-            <a class="button primary" href="./server.html" target="_blank" rel="noopener">打开服务端</a>
-            <a class="button secondary" href="./client.html" target="_blank" rel="noopener">打开 HTTP 客户端</a>
-            <a class="button secondary" href="./server-same-origin.html" target="_blank" rel="noopener">同源服务端</a>
-            <a class="button secondary" href="./client-same-origin.html" target="_blank" rel="noopener">同源客户端</a>
+            <a class="button primary" href="./server.html" target="_blank" rel="noopener" data-i18n="openServer">打开服务端</a>
+            <a class="button secondary" href="./client.html" target="_blank" rel="noopener" data-i18n="openClient">打开 HTTP 客户端</a>
+            <a class="button secondary" href="./server-same-origin.html" target="_blank" rel="noopener" data-i18n="sameOriginServer">同源服务端</a>
+            <a class="button secondary" href="./client-same-origin.html" target="_blank" rel="noopener" data-i18n="sameOriginClient">同源客户端</a>
           </div>
         </div>
-        <aside class="home-status" aria-label="Gateway 信息">
+        <aside class="home-status" data-i18n-aria-label="gatewayInfo" aria-label="Gateway 信息">
           <div>
-            <span>当前 gateway</span>
+            <span data-i18n="currentGateway">当前 gateway</span>
             <code id="homeUrl">http://127.0.0.1:21434/</code>
           </div>
           <div>
@@ -33,56 +43,91 @@
             <code id="apiUrl">http://127.0.0.1:21434/v1</code>
           </div>
           <div>
-            <span>默认端口</span>
-            <code>21434 起，自动向上寻找</code>
+            <span data-i18n="defaultPort">默认端口</span>
+            <code data-i18n="defaultPortValue">21434 起，自动向上寻找</code>
           </div>
         </aside>
       </section>
-      <section class="home-steps" aria-label="使用步骤">
+
+      <section class="home-steps" data-i18n-aria-label="stepsLabel" aria-label="使用步骤">
         <article>
           <span>1</span>
-          <h2>启动 gateway</h2>
-          <p><code>go run ./gateway</code>，或运行编译后的二进制文件。</p>
+          <h2 data-i18n="stepStartGatewayTitle">启动 gateway</h2>
+          <p><code>go run ./gateway</code></p>
+          <p data-i18n="stepStartGatewayBody">运行 go run ./gateway，或运行编译后的二进制文件。</p>
         </article>
         <article>
           <span>2</span>
-          <h2>加载模型</h2>
-          <p>打开服务端页面，选择模型并保持该浏览器标签页运行。</p>
+          <h2 data-i18n="stepLoadModelTitle">加载模型</h2>
+          <p data-i18n="stepLoadModelBody">打开服务端页面，选择模型并保持该浏览器标签页运行。</p>
         </article>
         <article>
           <span>3</span>
-          <h2>开始调用</h2>
-          <p>使用 HTTP 客户端页面，或通过 curl、CLI、OpenAI SDK 调用本地 API。</p>
+          <h2 data-i18n="stepUseApiTitle">开始调用</h2>
+          <p data-i18n="stepUseApiBody">使用 HTTP 客户端页面，或通过 curl、CLI、OpenAI SDK 调用本地 API。</p>
         </article>
       </section>
+
+      <details class="example-panel">
+        <summary data-i18n="apiExamplesSummary">查看 curl、CLI、OpenAI SDK 调用示例</summary>
+        <div class="example-grid">
+          <p class="small-note" data-i18n="apiExamplesIntro">
+            以下示例使用问题 who are you。示例 URL 会优先使用当前 gateway 实际 API 地址。
+          </p>
+
+          <article>
+            <h2 data-i18n="windowsCmdExampleTitle">Windows 11 CMD</h2>
+            <pre><code id="windowsCmdExample"></code></pre>
+          </article>
+
+          <article>
+            <h2 data-i18n="windowsPowershellExampleTitle">Windows 11 PowerShell</h2>
+            <pre><code id="windowsPowershellExample"></code></pre>
+          </article>
+
+          <details class="example-subpanel">
+            <summary data-i18n="windowsPowershellUtf8ExampleTitle">PowerShell UTF-8 Characters</summary>
+            <pre><code id="windowsPowershellUtf8Example"></code></pre>
+          </details>
+
+          <article>
+            <h2 data-i18n="windowsTerminalExampleTitle">Windows Terminal 说明</h2>
+            <pre><code id="windowsTerminalExample"></code></pre>
+          </article>
+
+          <article>
+            <h2 data-i18n="curlExampleTitle">curl</h2>
+            <pre><code id="curlExample"></code></pre>
+          </article>
+
+          <article>
+            <h2 data-i18n="cliExampleTitle">OpenAI CLI 风格</h2>
+            <pre><code id="cliExample"></code></pre>
+          </article>
+
+          <article>
+            <h2 data-i18n="pythonSdkExampleTitle">OpenAI Python SDK</h2>
+            <pre><code id="pythonSdkExample"></code></pre>
+          </article>
+
+          <article>
+            <h2 data-i18n="nodeSdkExampleTitle">OpenAI Node SDK</h2>
+            <pre><code id="nodeSdkExample"></code></pre>
+          </article>
+        </div>
+      </details>
+
       <section class="note-band">
-        <p>
-          端口默认从 <code>21434</code> 开始；如果端口被占用，gateway 会自动向上寻找可用端口，并把结果写入
-          <code>webllm-gateway-config.json</code>。跨页面和外部请求都应以 gateway 启动日志显示的实际端口为准。
+        <p data-i18n="homePortNote">
+          端口默认从 21434 开始；如果端口被占用，gateway 会自动向上寻找可用端口，并把结果写入
+          webllm-gateway-config.json。跨页面和外部请求都应以 gateway 启动日志显示的实际端口为准。
         </p>
-        <p>
-          Windows 二进制示例：<code>.\webllm-gateway-windows-amd64.exe</code>。macOS 二进制示例：<code>./webllm-gateway-darwin-arm64</code>。
+        <p data-i18n="homeBinaryNote">
+          Windows 二进制示例：.\webllm-gateway-windows-amd64.exe。macOS 二进制示例：./webllm-gateway-darwin-arm64。
         </p>
       </section>
     </main>
-    <script>
-      async function updateGatewayInfo() {
-        try {
-          const response = await fetch("./webllm-gateway-config.json", { cache: "no-store" });
-          if (!response.ok) return;
-          const config = await response.json();
-          if (config.base_url) {
-            document.querySelector("#apiUrl").textContent = config.base_url;
-          }
-          if (config.addr) {
-            document.querySelector("#homeUrl").textContent = `http://${config.addr}/`;
-          }
-        } catch {
-          // Static deployments may not have a generated gateway config.
-        }
-      }
 
-      updateGatewayInfo();
-    </script>
+    <script type="module" src="./src/home.js"></script>
   </body>
 </html>
