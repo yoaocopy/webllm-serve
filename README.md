@@ -6,6 +6,31 @@ gateway exposes local HTTP APIs for clients, CLI tools, and SDKs.
 
 ## Quick Start
 
+The easiest way is to clone this repository, enter the repository root, and run
+one of the prebuilt gateway binaries from `dist/`. This does not require Go.
+
+Windows:
+
+```powershell
+.\dist\webllm-gateway-windows-amd64.exe
+```
+
+macOS Apple Silicon:
+
+```bash
+./dist/webllm-gateway-darwin-arm64
+```
+
+Linux x64:
+
+```bash
+./dist/webllm-gateway-linux-amd64
+```
+
+Run these commands from the repository root, which is the parent folder of `dist/`.
+Do not run them from inside `dist/`, because the gateway needs to serve
+`index.html`, `server.html`, `client.html`, and `src/`.
+
 If you cloned the repository and have Go installed, run from the repository
 root:
 
