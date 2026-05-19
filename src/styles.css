@@ -497,6 +497,28 @@ pre {
   border-color: #ffd2cc;
 }
 
+.stream-log-content {
+  min-height: 44px;
+  max-height: 240px;
+  overflow: auto;
+  padding: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.65;
+}
+
+.log-entry details {
+  border-top: 1px solid var(--line);
+}
+
+.log-entry summary {
+  cursor: pointer;
+  padding: 8px 10px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .chat-shell {
   display: grid;
   grid-template-columns: 340px minmax(0, 1fr);

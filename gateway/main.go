@@ -1,4 +1,4 @@
-package main
+package gateway
 
 import (
 	"bufio"
@@ -52,8 +52,12 @@ type WSConn struct {
 	mu   sync.Mutex
 }
 
-func main() {
+var DefaultStaticMode = "local"
+
+func Run(staticFiles http.FileSystem) {
 	addr := flag.String("addr", "", "gateway listen address. If empty, starts at 127.0.0.1:21434 and searches upward")
+	staticMode := flag.String("static", DefaultStaticMode, "static file mode: local or embedded")
+	devStatic := flag.Bool("dev-static", false, "deprecated alias for -static local")
 	flag.Parse()
 
 	listener, listenAddr, err := chooseListener(*addr)
@@ -68,7 +72,20 @@ func main() {
 	mux.HandleFunc("/health", gw.handleHealth)
 	mux.HandleFunc("/v1/models", gw.handleModels)
 	mux.HandleFunc("/v1/chat/completions", gw.handleChatCompletions)
-	mux.Handle("/", http.FileServer(http.Dir(".")))
+	if *devStatic {
+		*staticMode = "local"
+	}
+	switch *staticMode {
+	case "local":
+		staticFiles = http.Dir(".")
+	case "embedded":
+		if staticFiles == nil {
+			log.Fatal("embedded static files are not available in this build")
+		}
+	default:
+		log.Fatalf("invalid -static value %q; use local or embedded", *staticMode)
+	}
+	mux.Handle("/", staticHandler(staticFiles))
 
 	server := &http.Server{
 		Handler:           cors(mux),
@@ -81,6 +98,17 @@ func main() {
 
 	printStartupSummary(listenAddr)
 	log.Fatal(server.Serve(listener))
+}
+
+func staticHandler(staticFiles http.FileSystem) http.Handler {
+	fileServer := http.FileServer(staticFiles)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/webllm-gateway-config.json" {
+			http.ServeFile(w, r, "webllm-gateway-config.json")
+			return
+		}
+		fileServer.ServeHTTP(w, r)
+	})
 }
 
 func chooseListener(explicitAddr string) (net.Listener, string, error) {
@@ -201,21 +229,21 @@ func (g *Gateway) handleChatCompletions(w http.ResponseWriter, r *http.Request) 
 
 	body, err := io.ReadAll(io.LimitReader(r.Body, 8<<20))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeOpenAIError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 	defer r.Body.Close()
 
 	var req map[string]any
 	if err := json.Unmarshal(body, &req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		writeOpenAIError(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	id := "chatcmpl-local-" + strconv.FormatInt(time.Now().UnixNano(), 36) + "-" + strconv.Itoa(rand.Intn(100000))
 	ch := make(chan BridgeMessage, 64)
 	if !g.registerPending(id, ch) {
-		http.Error(w, "server.html is not connected to the gateway", http.StatusServiceUnavailable)
+		writeOpenAIError(w, "server.html is not connected to the gateway", http.StatusServiceUnavailable)
 		return
 	}
 	defer g.unregisterPending(id)
@@ -226,7 +254,7 @@ func (g *Gateway) handleChatCompletions(w http.ResponseWriter, r *http.Request) 
 		"request": req,
 	}
 	if err := g.sendToBridge(msg); err != nil {
-		http.Error(w, err.Error(), http.StatusServiceUnavailable)
+		writeOpenAIError(w, err.Error(), http.StatusServiceUnavailable)
 		return
 	}
 
@@ -282,7 +310,11 @@ func (g *Gateway) streamResponse(w http.ResponseWriter, ch <-chan BridgeMessage)
 				return
 			case "gateway.error":
 				errPayload, _ := json.Marshal(map[string]any{
-					"error": map[string]string{"message": msg.errorMessage()},
+					"error": map[string]string{
+						"message": msg.errorMessage(),
+						"type":    "webllm_gateway_error",
+						"code":    "webllm_bridge_error",
+					},
 				})
 				fmt.Fprintf(w, "data: %s\n\n", errPayload)
 				fmt.Fprint(w, "data: [DONE]\n\n")
@@ -559,6 +591,7 @@ func writeOpenAIError(w http.ResponseWriter, message string, status int) {
 		"error": map[string]any{
 			"message": message,
 			"type":    "webllm_gateway_error",
+			"code":    "webllm_gateway_error",
 		},
 	})
 }

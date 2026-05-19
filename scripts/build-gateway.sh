@@ -6,19 +6,26 @@
 #
 # Default outputs:
 #   dist/      Bare gateway binaries.
-#   release/   Runnable platform folders with HTML/JS files and one gateway binary.
+#   release/   Runnable platform folders with one self-contained gateway binary and README.
 #
-# Build all configured optional targets:
-#   ALL_TARGETS=1 sh scripts/build-gateway.sh
+# All configured platform targets are temporarily enabled by default.
+#
+# Package modes:
+#   embedded  Build a self-contained binary that embeds the web pages. Default.
+#   files     Build a binary that serves local files and package it with HTML/JS/CSS files.
 #
 # Use custom output folders:
-#   sh scripts/build-gateway.sh dist release
+#   sh scripts/build-gateway.sh dist release embedded
 
 set -eu
 
 OUT_DIR="${1:-dist}"
 RELEASE_DIR="${2:-release}"
-ALL_TARGETS="${ALL_TARGETS:-0}"
+PACKAGE_MODE="${3:-embedded}"
+if [ "$PACKAGE_MODE" != "embedded" ] && [ "$PACKAGE_MODE" != "files" ]; then
+  echo "Package mode must be 'embedded' or 'files'" >&2
+  exit 1
+fi
 mkdir -p "$OUT_DIR"
 mkdir -p "$RELEASE_DIR"
 
@@ -28,32 +35,41 @@ build_one() {
   name="$3"
   package="$4"
   binary="$5"
+  if [ "$PACKAGE_MODE" = "embedded" ]; then
+    ldflags="-s -w -X webllm-serve/gateway.DefaultStaticMode=embedded"
+  else
+    ldflags="-s -w"
+  fi
   echo "Building ${goos}/${goarch} -> ${OUT_DIR}/${name}"
-  GOOS="$goos" GOARCH="$goarch" go build -trimpath -ldflags="-s -w" -o "${OUT_DIR}/${name}" ./gateway
+  if [ "$PACKAGE_MODE" = "files" ]; then
+    GOOS="$goos" GOARCH="$goarch" go build -tags localstatic -trimpath -ldflags="$ldflags" -o "${OUT_DIR}/${name}" .
+  else
+    GOOS="$goos" GOARCH="$goarch" go build -trimpath -ldflags="$ldflags" -o "${OUT_DIR}/${name}" .
+  fi
 
   package_dir="${RELEASE_DIR}/${package}"
   rm -rf "$package_dir"
   mkdir -p "$package_dir"
-  cp README.md index.html server.html client.html server-same-origin.html client-same-origin.html "$package_dir/"
-  cp -R src "$package_dir/"
+  if [ "$PACKAGE_MODE" = "files" ]; then
+    cp README.md index.html server.html client.html server-same-origin.html client-same-origin.html "$package_dir/"
+    cp -R src "$package_dir/"
+  else
+    cp README.md "$package_dir/"
+  fi
   cp "${OUT_DIR}/${name}" "${package_dir}/${binary}"
   echo "Packaged -> ${package_dir}"
 }
 
-# Default release packages are the ones most users can run directly:
+# Default release packages. All configured targets are temporarily enabled.
+# The most common ones are:
 # - Windows x64: release/webllm-serve-windows-amd64/webllm-gateway.exe
 # - macOS Apple Silicon: release/webllm-serve-macos-arm64/webllm-gateway
 # - Linux x64: release/webllm-serve-linux-amd64/webllm-gateway
 build_one windows amd64 webllm-gateway-windows-amd64.exe webllm-serve-windows-amd64 webllm-gateway.exe
 build_one darwin arm64 webllm-gateway-darwin-arm64 webllm-serve-macos-arm64 webllm-gateway
 build_one linux amd64 webllm-gateway-linux-amd64 webllm-serve-linux-amd64 webllm-gateway
-
-# Optional release packages are kept for future publishing. Set ALL_TARGETS=1
-# when you want to build every configured package.
-if [ "$ALL_TARGETS" = "1" ]; then
-  build_one windows arm64 webllm-gateway-windows-arm64.exe webllm-serve-windows-arm64 webllm-gateway.exe
-  build_one darwin amd64 webllm-gateway-darwin-amd64 webllm-serve-macos-amd64 webllm-gateway
-  build_one linux arm64 webllm-gateway-linux-arm64 webllm-serve-linux-arm64 webllm-gateway
-fi
+build_one windows arm64 webllm-gateway-windows-arm64.exe webllm-serve-windows-arm64 webllm-gateway.exe
+build_one darwin amd64 webllm-gateway-darwin-amd64 webllm-serve-macos-amd64 webllm-gateway
+build_one linux arm64 webllm-gateway-linux-arm64 webllm-serve-linux-arm64 webllm-gateway
 
 echo "Done. Binaries are in ${OUT_DIR}; runnable packages are in ${RELEASE_DIR}"

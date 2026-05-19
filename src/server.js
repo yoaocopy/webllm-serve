@@ -295,6 +295,177 @@ function getReloadOptions(modelId) {
   return undefined;
 }
 
+function makeEngineRequest(request) {
+  const {
+    model: _model,
+    ...engineRequest
+  } = request || {};
+
+  return engineRequest;
+}
+
+function normalizeMessageContent(content) {
+  if (typeof content === "string") {
+    return content;
+  }
+  if (content == null) {
+    return "";
+  }
+  if (Array.isArray(content)) {
+    return content
+      .map((part) => {
+        if (typeof part === "string") {
+          return part;
+        }
+        if (typeof part?.text === "string") {
+          return part.text;
+        }
+        return "";
+      })
+      .filter(Boolean)
+      .join("\n");
+  }
+  return String(content);
+}
+
+function normalizeCompletionResponse(response, request = {}) {
+  const normalized = response && typeof response === "object" ? { ...response } : {};
+  normalized.id = normalized.id || `chatcmpl-local-${Date.now().toString(36)}`;
+  normalized.object = normalized.object || "chat.completion";
+  normalized.created = normalized.created || Math.floor(Date.now() / 1000);
+  normalized.model = normalized.model || request.model || loadedModel || getSelectedModel();
+  normalized.choices = Array.isArray(normalized.choices) ? normalized.choices : [];
+  normalized.choices = normalized.choices.map((choice) => {
+    const normalizedChoice = choice && typeof choice === "object" ? { ...choice } : {};
+    const message =
+      normalizedChoice.message && typeof normalizedChoice.message === "object"
+        ? { ...normalizedChoice.message }
+        : {};
+    message.role = typeof message.role === "string" ? message.role : "assistant";
+    message.content = normalizeAssistantContent(message.content, normalizedChoice.text);
+    normalizedChoice.message = message;
+    normalizedChoice.index = Number.isInteger(normalizedChoice.index) ? normalizedChoice.index : 0;
+    normalizedChoice.finish_reason = normalizedChoice.finish_reason || "stop";
+    return normalizedChoice;
+  });
+  ensureFirstChoice(normalized);
+  return normalized;
+}
+
+function ensureFirstChoice(response) {
+  if (!Array.isArray(response.choices)) {
+    response.choices = [];
+  }
+  if (!response.choices.length) {
+    response.choices.push({ index: 0, message: { role: "assistant", content: "" }, finish_reason: "stop" });
+  }
+}
+
+function normalizeStreamChunk(chunk) {
+  if (!chunk || typeof chunk !== "object" || !Array.isArray(chunk.choices)) {
+    return chunk;
+  }
+
+  return {
+    ...chunk,
+    choices: chunk.choices.map((choice) => {
+      if (!choice || typeof choice !== "object" || !choice.delta || typeof choice.delta !== "object") {
+        return choice;
+      }
+      const delta = { ...choice.delta };
+      if ("content" in delta) {
+        delta.content = normalizeAssistantContent(delta.content);
+      }
+      return { ...choice, delta };
+    }),
+  };
+}
+
+function completionToStreamChunks(response) {
+  const id = response.id || `chatcmpl-local-${Date.now().toString(36)}`;
+  const created = response.created || Math.floor(Date.now() / 1000);
+  const model = response.model || loadedModel || getSelectedModel();
+  const choice = response.choices?.[0] || {};
+  const message = choice.message || {};
+  const base = { id, object: "chat.completion.chunk", created, model };
+  const chunks = [];
+
+  if (Array.isArray(message.tool_calls) && message.tool_calls.length) {
+    chunks.push({
+      ...base,
+      choices: [
+        {
+          index: 0,
+          delta: { role: "assistant", tool_calls: message.tool_calls.map((toolCall, index) => ({ index, ...toolCall })) },
+          finish_reason: null,
+        },
+      ],
+    });
+    chunks.push({ ...base, choices: [{ index: 0, delta: {}, finish_reason: "tool_calls" }] });
+    return chunks;
+  }
+
+  chunks.push({
+    ...base,
+    choices: [{ index: 0, delta: { role: "assistant", content: message.content || "" }, finish_reason: null }],
+  });
+  chunks.push({ ...base, choices: [{ index: 0, delta: {}, finish_reason: choice.finish_reason || "stop" }] });
+  return chunks;
+}
+
+function normalizeAssistantContent(content, fallback = "") {
+  if (typeof content === "string") {
+    return content === "undefined" ? "" : content;
+  }
+  if (content == null) {
+    return typeof fallback === "string" ? fallback : "";
+  }
+  return String(content);
+}
+
+function makeRequestDiagnostics(request) {
+  const messages = Array.isArray(request?.messages) ? request.messages : [];
+  const tools = Array.isArray(request?.tools) ? request.tools : [];
+  const messageChars = messages.map((message) => normalizeMessageContent(message?.content).length);
+  const systemChars = messages
+    .filter((message) => message?.role === "system")
+    .reduce((sum, message) => sum + normalizeMessageContent(message?.content).length, 0);
+  const toolsText = tools.length ? JSON.stringify(tools) : "";
+  return {
+    model: request?.model || "",
+    stream: Boolean(request?.stream),
+    tool_choice: request?.tool_choice ?? null,
+    messageCount: messages.length,
+    messageChars,
+    systemChars,
+    toolCount: tools.length,
+    toolsChars: toolsText.length,
+    requestChars: safeJSONStringify(request).length,
+    hasToolResult: messages.some((message) => message?.role === "tool"),
+  };
+}
+
+function makeEngineTransformReport(request, engineRequest) {
+  const droppedFields = [];
+  const reasons = {};
+  if ("model" in (request || {})) {
+    droppedFields.push("model");
+    reasons.model = "WebLLM engine uses the model loaded in server.html.";
+  }
+  return {
+    droppedFields,
+    reasons,
+  };
+}
+
+function safeJSONStringify(value) {
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return "";
+  }
+}
+
 async function onBridgeMessage(event) {
   const message = event.data || {};
   if (message.type === "client.hello") {
@@ -349,6 +520,11 @@ async function processChatCompletion(request, callbacks) {
   setStatus(t("generating"), "busy");
 
   try {
+    if (el.showRequests.checked) {
+      logItem("request", request);
+      logItem("diagnostics", makeRequestDiagnostics(request));
+    }
+
     const requestedModel = request.model || loadedModel || getSelectedModel();
     if (!engine || loadedModel !== requestedModel) {
       if (!el.autoDownload.checked) {
@@ -359,23 +535,25 @@ async function processChatCompletion(request, callbacks) {
       busy = true;
     }
 
-    const engineRequest = { ...request, model: undefined };
+    const engineRequest = makeEngineRequest(request);
     if (el.showRequests.checked) {
-      logItem("request", request);
+      logItem("engine diagnostics", makeRequestDiagnostics(engineRequest));
+      logItem("engine transforms", makeEngineTransformReport(request, engineRequest));
     }
 
     if (request.stream) {
+      const streamLog = el.showResponses.checked ? startStreamLog() : null;
       const chunks = await engine.chat.completions.create(engineRequest);
       for await (const chunk of chunks) {
-        callbacks.stream(chunk);
-        if (el.showResponses.checked) {
-          logItem("stream", chunk);
-        }
+        const normalizedChunk = normalizeStreamChunk(chunk);
+        callbacks.stream(normalizedChunk);
+        appendStreamLog(streamLog, normalizedChunk);
       }
+      finishStreamLog(streamLog);
       callbacks.done();
     } else {
       const response = await engine.chat.completions.create(engineRequest);
-      callbacks.response(response);
+      callbacks.response(normalizeCompletionResponse(response, request));
       if (el.showResponses.checked) {
         logItem("response", response);
       }
@@ -517,6 +695,59 @@ function logItem(kind, value) {
   entry.innerHTML = `<header><strong>${kind}</strong><span>${time}</span></header><pre></pre>`;
   entry.querySelector("pre").textContent = body;
   el.logs.prepend(entry);
+}
+
+function startStreamLog() {
+  const entry = document.createElement("article");
+  entry.className = "log-entry stream";
+  const time = new Date().toLocaleTimeString();
+  entry.innerHTML = `
+    <header><strong>stream response</strong><span>${time}</span></header>
+    <div class="stream-log-content"></div>
+    <details>
+      <summary>latest chunk</summary>
+      <pre></pre>
+    </details>
+  `;
+  el.logs.prepend(entry);
+  return {
+    entry,
+    content: entry.querySelector(".stream-log-content"),
+    latest: entry.querySelector("pre"),
+  };
+}
+
+function appendStreamLog(streamLog, chunk) {
+  if (!streamLog) {
+    return;
+  }
+
+  const delta = extractStreamDelta(chunk);
+  if (delta) {
+    streamLog.content.textContent += delta;
+  }
+  streamLog.latest.textContent = JSON.stringify(chunk, null, 2);
+}
+
+function finishStreamLog(streamLog) {
+  if (!streamLog || streamLog.content.textContent.trim()) {
+    return;
+  }
+  streamLog.content.textContent = "(no text delta)";
+}
+
+function extractStreamDelta(chunk) {
+  const choice = chunk?.choices?.[0];
+  const delta = choice?.delta?.content;
+  if (typeof delta === "string") {
+    return delta;
+  }
+  if (Array.isArray(delta)) {
+    return delta
+      .map((part) => (typeof part === "string" ? part : part?.text || ""))
+      .join("");
+  }
+  return "";
 }
 
 init();

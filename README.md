@@ -6,8 +6,9 @@ gateway exposes local HTTP APIs for clients, CLI tools, and SDKs.
 
 ## Quick Start
 
-The easiest way is to clone this repository, enter the repository root, and run
-one of the prebuilt gateway binaries from `dist/`. This does not require Go.
+The easiest way is to clone this repository and run one of the prebuilt gateway
+binaries from `dist/`. This does not require Go. The gateway binary is
+self-contained: it embeds `index.html`, `server.html`, `client.html`, and `src/`.
 
 Windows:
 
@@ -27,15 +28,23 @@ Linux x64:
 ./dist/webllm-gateway-linux-amd64
 ```
 
-Run these commands from the repository root, which is the parent folder of `dist/`.
-Do not run them from inside `dist/`, because the gateway needs to serve
-`index.html`, `server.html`, `client.html`, and `src/`.
+You can run the binary from the repository root as shown above. Because the
+static pages are embedded, the same binary can also be copied elsewhere and run
+by itself.
 
 If you cloned the repository and have Go installed, run from the repository
-root:
+root. This development command serves files from the working directory, so
+changes to `index.html`, `server.html`, `client.html`, and `src/` are reflected
+after browser refresh:
 
 ```bash
-go run ./gateway
+go run .
+```
+
+To test the compiled embedded snapshot behavior from source:
+
+```bash
+go run . -static embedded
 ```
 
 If you downloaded a generated release package, enter that package folder and run
@@ -109,7 +118,7 @@ To force a specific port:
 From source:
 
 ```bash
-go run ./gateway -- -addr 127.0.0.1:21440
+go run . -addr 127.0.0.1:21440
 ```
 
 From a macOS/Linux release package:
@@ -129,14 +138,14 @@ From a Windows release package:
 On a computer with Go installed, build a binary for the current platform:
 
 ```bash
-go build -trimpath -ldflags="-s -w" -o dist/webllm-gateway ./gateway
+go build -trimpath -ldflags="-s -w" -o dist/webllm-gateway .
 ```
 
 On Windows, build the current platform binary:
 
 ```powershell
 New-Item -ItemType Directory -Force dist
-go build -trimpath -ldflags="-s -w" -o dist/webllm-gateway.exe ./gateway
+go build -trimpath -ldflags="-s -w" -o dist/webllm-gateway.exe .
 ```
 
 Cross-compile common release targets from macOS/Linux:
@@ -151,54 +160,66 @@ Cross-compile common release targets from Windows PowerShell:
 powershell -ExecutionPolicy Bypass -File scripts/build-gateway.ps1
 ```
 
-By default, the scripts build three practical release targets:
+The default package mode is `embedded`. It builds a self-contained gateway
+binary with the web pages embedded. The build scripts set the binary default to
+`-static embedded`, so users can run the release binary from any folder.
 
-- `webllm-gateway-windows-amd64.exe`
-- `webllm-gateway-darwin-arm64`
-- `webllm-gateway-linux-amd64`
-
-They also create runnable platform packages under `release/`:
-
-- `release/webllm-serve-windows-amd64/`
-- `release/webllm-serve-macos-arm64/`
-- `release/webllm-serve-linux-amd64/`
-
-Each package contains the matching gateway binary plus `index.html`, the server
-and client pages, and `src/`. A user can download one package folder and run the
-gateway directly from that folder.
-
-Optional targets are kept in the build scripts but disabled by default to reduce
-artifact size. To build every configured target:
+To build the older file-based release layout, use `files` mode. In this mode the
+gateway binary is built with `-tags localstatic` and the release folder includes
+the HTML/JS/CSS files:
 
 macOS/Linux:
 
 ```bash
-ALL_TARGETS=1 sh scripts/build-gateway.sh
+sh scripts/build-gateway.sh dist release files
 ```
 
 Windows PowerShell:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File scripts/build-gateway.ps1 -AllTargets
+powershell -ExecutionPolicy Bypass -File scripts\build-gateway.ps1 -PackageMode files
 ```
+
+By default, the scripts currently build all configured release targets:
+
+- `webllm-gateway-windows-amd64.exe`
+- `webllm-gateway-windows-arm64.exe`
+- `webllm-gateway-darwin-amd64`
+- `webllm-gateway-darwin-arm64`
+- `webllm-gateway-linux-amd64`
+- `webllm-gateway-linux-arm64`
+
+They also create runnable platform packages under `release/`:
+
+- `release/webllm-serve-windows-amd64/`
+- `release/webllm-serve-windows-arm64/`
+- `release/webllm-serve-macos-amd64/`
+- `release/webllm-serve-macos-arm64/`
+- `release/webllm-serve-linux-amd64/`
+- `release/webllm-serve-linux-arm64/`
+
+In `embedded` mode, each package contains the matching self-contained gateway
+binary and `README.md`. In `files` mode, each package also contains
+`index.html`, `server.html`, `client.html`, same-origin pages, and `src/`.
+A user can download one package folder and run the gateway directly from that
+folder.
+
+The build scripts previously supported a smaller default target set. The
+platform list is currently enabled in full for release testing; reduce the
+enabled targets in the scripts again if artifact size becomes a concern.
 
 ## Using Built Binaries
 
-The gateway executable serves the HTML/CSS/JS files from its current working
-directory. Do not distribute only the gateway binary unless you also embed or
-otherwise provide the static files.
+In the default `embedded` package mode, the gateway executable embeds the
+HTML/CSS/JS files, so the binary can run by itself. It still writes
+`webllm-gateway-config.json` to the current working directory so browser pages
+can discover the actual selected port.
 
 Recommended package layout:
 
 ```text
 webllm-serve-windows-amd64/
   webllm-gateway.exe
-  index.html
-  server.html
-  client.html
-  server-same-origin.html
-  client-same-origin.html
-  src/
   README.md
 ```
 
@@ -208,23 +229,15 @@ The generated `release/` folders already follow this layout. For example:
 release/
   webllm-serve-windows-amd64/
     webllm-gateway.exe
-    index.html
-    server.html
-    client.html
-    server-same-origin.html
-    client-same-origin.html
-    src/
     README.md
 
   webllm-serve-macos-arm64/
     webllm-gateway
-    index.html
-    ...
+    README.md
 
   webllm-serve-linux-amd64/
     webllm-gateway
-    index.html
-    ...
+    README.md
 ```
 
 Run the binary from the matching release package folder.
@@ -250,8 +263,18 @@ cd release/webllm-serve-linux-amd64
 ./webllm-gateway
 ```
 
-If you manually create a package, include only the matching binary plus the
-static files. For example, a Windows x64 package can look like:
+If you manually create a package, include the matching binary. README is useful
+but optional for running:
+
+```text
+webllm-serve-windows-amd64/
+  webllm-gateway.exe
+  README.md
+```
+
+Then open the URLs printed by the gateway.
+
+If you build with `files` package mode, the release folder uses the older layout:
 
 ```text
 webllm-serve-windows-amd64/
@@ -265,10 +288,20 @@ webllm-serve-windows-amd64/
   README.md
 ```
 
-Then open the URLs printed by the gateway. If the binary is launched from
-another directory, it may not find `server.html` and `src/`. In that case, start
-it from the release folder in a terminal. A future version can use Go `embed` to
-produce a fully self-contained single binary.
+Run the binary from that folder so it can serve the local files.
+
+For frontend development, `go run .` serves files from the current working
+directory by default:
+
+```bash
+go run .
+```
+
+To test the embedded snapshot mode locally:
+
+```bash
+go run . -static embedded
+```
 
 ## Gateway APIs
 
@@ -286,6 +319,35 @@ The gateway accepts OpenAI-style `Authorization: Bearer ...` headers for
 compatibility, but it does not enforce API-key authentication yet. The key is
 currently passed through by clients for shape compatibility and future auth
 support.
+
+## Jupyter AI Compatibility
+
+Jupyter AI can call the gateway as an OpenAI-compatible chat provider:
+
+```text
+http://127.0.0.1:21434/v1
+```
+
+Use the actual port printed by the gateway. The API key can be any non-empty
+placeholder, such as `webllm-local`.
+
+The gateway's role is transport and minimal OpenAI/WebLLM format compatibility.
+It does not decide which Jupyter tool to call, rewrite Jupyter AI prompts, or
+execute notebook, file, kernel, browser, or skill commands itself.
+
+When Jupyter AI sends OpenAI `tools`, the request is forwarded to the browser
+WebLLM runtime after internal routing fields such as `model` are handled. Tool
+calling then depends on whether the loaded WebLLM model/runtime combination
+supports the OpenAI tool-calling fields well enough for Jupyter AI's protocol.
+Response objects are still normalized to include OpenAI-style fields such as
+`id`, `object`, `created`, `model`, `choices`, and `finish_reason`.
+
+WebLLM documents OpenAI-style function calling as WIP/preliminary support using
+`tools` and `tool_choice`. Some model-specific implementations may still reject
+certain combinations. For example, Hermes 2 Pro has been observed to reject
+`tools` when a custom Jupyter AI system prompt is also present. In that case the
+gateway reports the WebLLM error instead of rewriting the prompt, removing
+system messages, or silently choosing tools itself.
 
 ## Curl And SDK Examples
 
@@ -510,6 +572,36 @@ Cannot find model record in appConfig
 - The server should not silently override sampling parameters. Expose advanced
   options in `client.html` if tighter control is needed.
 
+For Jupyter AI tool-enabled requests, the default context window can be too
+small for the Jupyternaut system prompt plus OpenAI tool schemas. This project
+overrides the recommended Qwen models to:
+
+```js
+{
+  model_id: "Qwen3.5-2B-q4f16_1-MLC",
+  overrides: {
+    context_window_size: 8192,
+  },
+}
+
+{
+  model_id: "Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC",
+  overrides: {
+    context_window_size: 8192,
+  },
+}
+```
+
+This addresses errors such as:
+
+```text
+Prompt tokens exceed context window size: number of prompt tokens: 5145; context window size: 4096
+```
+
+The override changes only WebLLM chat configuration. It should not require
+downloading model weights again. Reload the page and reload the model. If GPU
+memory becomes tight, lower the override to `6144`.
+
 ### Gemma3
 
 `gemma3-1b-it-q4f16_1-MLC` is available as a WebLLM built-in model, but its
@@ -542,6 +634,34 @@ Important details:
 Failed to store ...webgpu.wasm
 Network response was not ok
 ```
+
+### Hermes 2 Pro Mistral 7B
+
+`Hermes-2-Pro-Mistral-7B-q4f16_1-MLC` is included as a WebLLM built-in model.
+By default, its context window comes from the model's bundled
+`mlc-chat-config.json`. This project currently does not override Hermes'
+context window.
+
+If you need to test a larger Jupyter AI prompt budget, you can add a temporary
+override in `src/models.js`:
+
+```js
+{
+  model_id: "Hermes-2-Pro-Mistral-7B-q4f16_1-MLC",
+  overrides: {
+    context_window_size: 8192,
+  },
+}
+```
+
+This can help with Jupyter AI requests where the Jupyternaut system prompt plus
+OpenAI tool schemas are several thousand characters before the user message.
+
+Changing this override does not change the model weights or `model_lib`, so it
+should not require downloading the model again. Reload the page and reload the
+model so WebLLM applies the new chat configuration. If the browser becomes slow
+or runs out of GPU memory, lower the override to `6144` or remove it to use
+Hermes' bundled default.
 
 ### ModelRecord Merge Rule
 

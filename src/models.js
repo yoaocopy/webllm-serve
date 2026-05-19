@@ -12,10 +12,23 @@ export const MODEL_IDS = [
   "gemma3-1b-it-q4f16_1-MLC",
   "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
   "Llama-3.2-1B-Instruct-q4f16_1-MLC",
+  "Hermes-2-Pro-Mistral-7B-q4f16_1-MLC",
   "sft_model_1.5B-q4f16_1-MLC (Hugging Face)",
 ];
 
 export const CUSTOM_MODEL_RECORDS = [
+  {
+    model_id: "Qwen3.5-2B-q4f16_1-MLC",
+    overrides: {
+      context_window_size: 8192,
+    },
+  },
+  {
+    model_id: "Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC",
+    overrides: {
+      context_window_size: 8192,
+    },
+  },
   {
     model_id: "gemma3-1b-it-q4f16_1-MLC",
     overrides: {
