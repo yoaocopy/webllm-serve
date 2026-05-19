@@ -55,6 +55,7 @@ $filePackageStaticFiles = @(
   "index.html",
   "server.html",
   "client.html",
+  "prebuilt-models.html",
   "server-same-origin.html",
   "client-same-origin.html"
 )

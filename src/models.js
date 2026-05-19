@@ -4,17 +4,17 @@ export const SERVER_STATE_KEY = "webllm-serve-state";
 export const SAME_ORIGIN_SERVER_STATE_KEY = "webllm-serve-state-same-origin";
 
 export const MODEL_CATALOG = [
-  { alias: "default", id: "Qwen2.5-1.5B-Instruct-q4f16_1-MLC" },
-  { alias: "m001", id: "gemma3-1b-it-q4f16_1-MLC" },
-  { alias: "m002", id: "Hermes-2-Pro-Mistral-7B-q4f16_1-MLC" },
-  { alias: "m003", id: "Llama-3.2-1B-Instruct-q4f16_1-MLC" },
-  { alias: "m004", id: "Qwen2.5-0.5B-Instruct-q4f16_1-MLC" },
-  { alias: "m005", id: "Qwen2.5-1.5B-Instruct-q4f16_1-MLC" },
-  { alias: "m006", id: "Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC" },
-  { alias: "m007", id: "Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC" },
-  { alias: "m008", id: "Qwen3.5-0.8B-q4f16_1-MLC" },
-  { alias: "m009", id: "Qwen3.5-2B-q4f16_1-MLC" },
-  { alias: "m010", id: "sft_model_1.5B-q4f16_1-MLC (Hugging Face)" },
+  { alias: "default", id: "Qwen2.5-1.5B-Instruct-q4f16_1-MLC", vramMB: 1629.75 },
+  { alias: "m001", id: "gemma3-1b-it-q4f16_1-MLC", vramMB: 711.07 },
+  { alias: "m002", id: "Hermes-2-Pro-Mistral-7B-q4f16_1-MLC", vramMB: 4033.28 },
+  { alias: "m003", id: "Llama-3.2-1B-Instruct-q4f16_1-MLC", vramMB: 879.04 },
+  { alias: "m004", id: "Qwen2.5-0.5B-Instruct-q4f16_1-MLC", vramMB: 944.62 },
+  { alias: "m005", id: "Qwen2.5-1.5B-Instruct-q4f16_1-MLC", vramMB: 1629.75 },
+  { alias: "m006", id: "Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC", vramMB: 944.62 },
+  { alias: "m007", id: "Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC", vramMB: 1629.75 },
+  { alias: "m008", id: "Qwen3.5-0.8B-q4f16_1-MLC", vramMB: 1629.49 },
+  { alias: "m009", id: "Qwen3.5-2B-q4f16_1-MLC", vramMB: 2245.44 },
+  { alias: "m010", id: "sft_model_1.5B-q4f16_1-MLC (Hugging Face)", vramMB: 1629.75 },
 ];
 
 export const CURRENT_MODEL_ALIASES = new Set(["current", "loaded"]);
@@ -23,7 +23,42 @@ export const MODEL_ALIAS_BY_ID = new Map(MODEL_CATALOG.map((model) => [model.id,
 export const MODEL_ID_BY_ALIAS = new Map(MODEL_CATALOG.map((model) => [model.alias.toLowerCase(), model.id]));
 
 export function formatModelOption(model) {
-  return `${model.alias} - ${model.id}`;
+  const vram = formatVram(model.vramMB);
+  return vram ? `${model.alias} | ${model.id} | ${vram}` : `${model.alias} | ${model.id}`;
+}
+
+export function formatPrebuiltModelOption(model) {
+  const vram = formatVram(model.vramMB);
+  return vram ? `${model.id} | ${vram}` : model.id;
+}
+
+export function applyModelMetadata(records = []) {
+  const vramById = new Map(
+    records
+      .filter((record) => record?.model_id && Number.isFinite(Number(record.vram_required_MB)))
+      .map((record) => [record.model_id, Number(record.vram_required_MB)]),
+  );
+
+  for (const model of MODEL_CATALOG) {
+    const vramMB = vramById.get(model.id);
+    if (vramMB !== undefined) {
+      model.vramMB = vramMB;
+    }
+  }
+}
+
+export function formatVram(vramMB) {
+  const value = Number(vramMB);
+  if (!Number.isFinite(value) || value <= 0) {
+    return "";
+  }
+
+  if (value >= 1024) {
+    const gb = value / 1024;
+    return `VRAM ~${gb >= 10 ? Math.round(gb) : gb.toFixed(1)} GB`;
+  }
+
+  return `VRAM ~${Math.round(value)} MB`;
 }
 
 export function resolveModelId(value, { loadedModel = "", selectedModel = "" } = {}) {
@@ -47,6 +82,7 @@ export function makeModelListData() {
       object: "model",
       owned_by: "webllm",
       alias: model.alias,
+      vram_required_MB: model.vramMB,
     })),
   ];
 }

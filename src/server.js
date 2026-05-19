@@ -4,7 +4,9 @@ import {
   MODEL_CATALOG,
   MODEL_IDS,
   SERVER_STATE_KEY,
+  applyModelMetadata,
   formatModelOption,
+  formatPrebuiltModelOption,
   makeModelListData,
   resolveModelId,
 } from "./models.js";
@@ -51,13 +53,17 @@ let busy = false;
 let gatewaySocket = null;
 let gatewayConnected = false;
 let prismFallbackLoading = false;
+let selectedModelKey = `catalog:${MODEL_CATALOG[0]?.alias || "default"}`;
+let prebuiltModelChoices = [];
 const webllmModules = new Map();
 
 const channel = new BroadcastChannel(CHANNEL_NAME);
 
 function init() {
   mountLanguageSelect();
+  applyModelMetadata(CUSTOM_MODEL_RECORDS);
   renderModelOptions();
+  hydrateModelMetadata();
 
   updateWebGPUStatus();
   setStatus(t("waiting"), "ready");
@@ -75,7 +81,11 @@ function init() {
   el.disconnectGateway?.addEventListener("click", disconnectGateway);
   el.modelComboButton?.addEventListener("click", toggleModelCombo);
   el.modelSearch?.addEventListener("input", renderModelOptions);
-  el.modelSelect.addEventListener("change", renderServerPythonExample);
+  el.modelSelect.addEventListener("change", () => {
+    selectedModelKey = el.modelSelect.value;
+    updateModelComboButton();
+    renderServerPythonExample();
+  });
   el.customModel.addEventListener("input", renderServerPythonExample);
   document.addEventListener("click", closeModelComboOnOutsideClick);
   document.addEventListener("keydown", closeModelComboOnEscape);
@@ -88,6 +98,19 @@ function init() {
   window.setInterval(announceReady, 2000);
   renderServerPythonExample();
   initGatewayConfig().finally(connectGateway);
+}
+
+async function hydrateModelMetadata() {
+  try {
+    const webllm = await getWebLLM("");
+    const prebuiltRecords = webllm.prebuiltAppConfig?.model_list || [];
+    applyModelMetadata(prebuiltRecords);
+    applyModelMetadata(CUSTOM_MODEL_RECORDS);
+    prebuiltModelChoices = makePrebuiltModelChoices(prebuiltRecords);
+    renderModelOptions();
+  } catch {
+    // Model metadata is helpful UI context, but loading should still work without it.
+  }
 }
 
 async function initGatewayConfig() {
@@ -129,48 +152,110 @@ function refreshLocalizedState() {
 
 function getSelectedModel() {
   const custom = el.customModel.value.trim();
-  return custom || el.modelSelect.value;
+  return custom || getSelectedModelChoice()?.id || MODEL_CATALOG[0]?.id || "";
+}
+
+function makeModelChoices() {
+  const catalogChoices = MODEL_CATALOG.map((model) => ({
+    key: `catalog:${model.alias}`,
+    id: model.id,
+    alias: model.alias,
+    label: formatModelOption(model),
+    selectable: true,
+  }));
+
+  if (!prebuiltModelChoices.length) {
+    return catalogChoices;
+  }
+
+  return [
+    ...catalogChoices,
+    {
+      key: "separator:prebuilt",
+      label: t("allPrebuiltModelsSeparator"),
+      selectable: false,
+    },
+    ...prebuiltModelChoices,
+  ];
+}
+
+function makePrebuiltModelChoices(records = []) {
+  return records
+    .filter((record) => record?.model_id)
+    .map((record, index) => ({
+      key: `prebuilt:${record.model_id}:${index}`,
+      id: record.model_id,
+      label: formatPrebuiltModelOption({
+        id: record.model_id,
+        vramMB: record.vram_required_MB,
+      }),
+      selectable: true,
+    }))
+    .sort((a, b) => a.id.localeCompare(b.id));
+}
+
+function getSelectedModelChoice() {
+  return makeModelChoices().find((choice) => choice.selectable && choice.key === selectedModelKey);
+}
+
+function matchesModelQuery(choice, query) {
+  if (!query) {
+    return true;
+  }
+  if (!choice.selectable) {
+    return prebuiltModelChoices.some((model) => matchesModelQuery(model, query));
+  }
+
+  return (
+    choice.id.toLowerCase().includes(query) ||
+    (choice.alias ? choice.alias.toLowerCase().includes(query) : false)
+  );
 }
 
 function renderModelOptions() {
-  const selected = el.modelSelect.value;
   const query = (el.modelSearch?.value || "").trim().toLowerCase();
-  const models = MODEL_CATALOG.filter((model) => {
-    if (!query) {
-      return true;
-    }
-    return model.alias.toLowerCase().includes(query) || model.id.toLowerCase().includes(query);
-  });
+  const choices = makeModelChoices();
+  const visibleChoices = choices.filter((choice) => matchesModelQuery(choice, query));
 
   el.modelSelect.innerHTML = "";
   el.modelOptionList.innerHTML = "";
-  for (const model of MODEL_CATALOG) {
+  for (const choice of choices.filter((choice) => choice.selectable)) {
     const option = document.createElement("option");
-    option.value = model.id;
-    option.textContent = formatModelOption(model);
+    option.value = choice.key;
+    option.textContent = choice.label;
     el.modelSelect.append(option);
   }
 
-  if (selected && MODEL_CATALOG.some((model) => model.id === selected)) {
-    el.modelSelect.value = selected;
+  if (!choices.some((choice) => choice.selectable && choice.key === selectedModelKey)) {
+    selectedModelKey = choices.find((choice) => choice.selectable)?.key || "";
   }
+  el.modelSelect.value = selectedModelKey;
 
-  const visibleModels = models;
-  if (!visibleModels.length) {
+  if (!visibleChoices.some((choice) => choice.selectable)) {
     const empty = document.createElement("div");
     empty.className = "model-option model-option-empty";
     empty.textContent = t("modelNoMatches");
     el.modelOptionList.append(empty);
   }
-  for (const model of visibleModels) {
+  for (const choice of visibleChoices) {
+    if (!choice.selectable) {
+      const separator = document.createElement("div");
+      separator.className = "model-option-separator";
+      separator.textContent = choice.label;
+      separator.setAttribute("aria-hidden", "true");
+      el.modelOptionList.append(separator);
+      continue;
+    }
+
     const button = document.createElement("button");
     button.type = "button";
     button.className = "model-option";
-    button.textContent = formatModelOption(model);
-    button.dataset.modelId = model.id;
+    button.textContent = choice.label;
+    button.dataset.modelId = choice.id;
+    button.dataset.modelKey = choice.key;
     button.setAttribute("role", "option");
-    button.setAttribute("aria-selected", model.id === selected ? "true" : "false");
-    button.addEventListener("click", () => selectModel(model.id));
+    button.setAttribute("aria-selected", choice.key === selectedModelKey ? "true" : "false");
+    button.addEventListener("click", () => selectModel(choice.key));
     el.modelOptionList.append(button);
   }
 
@@ -178,8 +263,9 @@ function renderModelOptions() {
   renderServerPythonExample();
 }
 
-function selectModel(modelId) {
-  el.modelSelect.value = modelId;
+function selectModel(modelKey) {
+  selectedModelKey = modelKey;
+  el.modelSelect.value = modelKey;
   el.modelSearch.value = "";
   renderModelOptions();
   closeModelCombo();
@@ -190,8 +276,8 @@ function updateModelComboButton() {
   if (!el.modelComboButton) {
     return;
   }
-  const selected = MODEL_CATALOG.find((model) => model.id === el.modelSelect.value) || MODEL_CATALOG[0];
-  el.modelComboButton.textContent = selected ? formatModelOption(selected) : "";
+  const selected = getSelectedModelChoice();
+  el.modelComboButton.textContent = selected ? selected.label : "";
 }
 
 function toggleModelCombo() {

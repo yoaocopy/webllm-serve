@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WebLLM Prebuilt Models</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism.css" />
+    <link rel="stylesheet" href="./src/styles.css" />
+    <style>
+      .model-inspector {
+        display: grid;
+        gap: 16px;
+      }
+
+      .model-inspector > * {
+        min-width: 0;
+      }
+
+      .model-inspector .topbar {
+        padding: 10px 0;
+        margin-bottom: 4px;
+      }
+
+      .model-inspector .topbar .muted {
+        margin-bottom: 0;
+      }
+
+      .inspector-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        justify-content: flex-start;
+      }
+
+      .inspector-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        justify-content: flex-end;
+      }
+
+      .table-heading {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+      }
+
+      .table-heading h2 {
+        margin-right: 8px;
+      }
+
+      .inspector-toolbar input {
+        flex: 1 1 320px;
+        min-height: 40px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 9px 11px;
+        color: var(--ink);
+        background: #fff;
+      }
+
+      .model-table-wrap {
+        width: 100%;
+        max-width: 100%;
+        max-height: 58vh;
+        overflow: auto;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: #fff;
+      }
+
+      .model-table-wrap.expanded,
+      .raw-json.expanded {
+        max-height: none;
+      }
+
+      .model-table {
+        width: max-content;
+        min-width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+        table-layout: fixed;
+      }
+
+      .model-table th,
+      .model-table td {
+        position: relative;
+        border-bottom: 1px solid var(--line);
+        padding: 9px 10px;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      .model-table th {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        background: #f7faf8;
+        color: var(--muted);
+        font-size: 11px;
+        text-transform: uppercase;
+      }
+
+      .sort-button {
+        width: 100%;
+        border: 0;
+        padding: 0 14px 0 0;
+        color: inherit;
+        background: transparent;
+        font: inherit;
+        font-weight: 800;
+        text-align: left;
+        text-transform: inherit;
+        cursor: pointer;
+      }
+
+      .sort-button::after {
+        content: "↕";
+        position: absolute;
+        right: 20px;
+        color: #9aa3a1;
+      }
+
+      .sort-button[data-sort="asc"]::after {
+        content: "↑";
+      }
+
+      .sort-button[data-sort="desc"]::after {
+        content: "↓";
+      }
+
+      .column-resizer {
+        position: absolute;
+        top: 0;
+        right: -3px;
+        width: 8px;
+        height: 100%;
+        cursor: col-resize;
+        user-select: none;
+      }
+
+      .column-resizer::after {
+        content: "";
+        position: absolute;
+        top: 8px;
+        bottom: 8px;
+        left: 3px;
+        width: 1px;
+        background: #d7dfdc;
+      }
+
+      .model-table code {
+        overflow-wrap: anywhere;
+      }
+
+      .model-table td:nth-child(6),
+      .model-table td:nth-child(7) {
+        font-size: 9px;
+        line-height: 1.35;
+        white-space: nowrap;
+      }
+
+      .raw-json {
+        max-width: calc(100vw - 64px);
+        max-height: 58vh;
+        overflow: auto;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 12px;
+        background: #fbfcfb;
+        color: var(--ink);
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .raw-json code,
+      .raw-json .token {
+        font-size: 12px;
+        line-height: 1.45;
+      }
+
+      .raw-json code {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app-shell model-inspector">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">WebLLM</p>
+          <h1>Prebuilt Model Inspector</h1>
+          <p class="muted">
+            异步读取 <code>webllm.prebuiltAppConfig.model_list</code>，用于查看 WebLLM 内置模型信息。
+          </p>
+          <p class="muted">
+            参考：
+            <a href="https://llm.mlc.ai/docs/deploy/webllm.html#model-records-in-webllm" target="_blank" rel="noopener">
+              Model Records in WebLLM
+            </a>
+          </p>
+        </div>
+        <nav class="inspector-actions" aria-label="Page navigation">
+          <a class="button secondary" href="./index.html" target="_blank" rel="noopener">Home</a>
+          <a class="button secondary" href="./server.html" target="_blank" rel="noopener">Server</a>
+        </nav>
+      </header>
+
+      <section class="panel">
+        <div class="panel-title">
+          <div class="table-heading">
+            <h2>整理后的表格</h2>
+            <span id="status" class="status-pill" data-state="busy">Loading...</span>
+            <button id="reload" class="button secondary compact" type="button">Reload</button>
+            <button id="toggleTableHeight" class="button secondary compact" type="button">Expand table</button>
+          </div>
+          <span id="count" class="muted">0 models</span>
+        </div>
+        <div class="inspector-toolbar">
+          <input id="filter" placeholder="Filter by model id, model URL, wasm URL, or feature" />
+        </div>
+        <div id="tableWrap" class="model-table-wrap">
+          <table class="model-table">
+            <colgroup>
+              <col style="width: 300px" />
+              <col style="width: 120px" />
+              <col style="width: 110px" />
+              <col style="width: 120px" />
+              <col style="width: 150px" />
+              <col style="width: 520px" />
+              <col style="width: 620px" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th><button class="sort-button" type="button" data-sort-key="model_id">Model ID</button><span class="column-resizer"></span></th>
+                <th><button class="sort-button" type="button" data-sort-key="vram_required_MB">VRAM</button><span class="column-resizer"></span></th>
+                <th><button class="sort-button" type="button" data-sort-key="context">Context</button><span class="column-resizer"></span></th>
+                <th><button class="sort-button" type="button" data-sort-key="low_resource_required">Low Resource</button><span class="column-resizer"></span></th>
+                <th><button class="sort-button" type="button" data-sort-key="required_features">Features</button><span class="column-resizer"></span></th>
+                <th><button class="sort-button" type="button" data-sort-key="model">Model</button><span class="column-resizer"></span></th>
+                <th><button class="sort-button" type="button" data-sort-key="model_lib">Model Lib</button><span class="column-resizer"></span></th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title">
+          <div class="table-heading">
+            <h2>原始 JSON</h2>
+            <button id="toggleJsonHeight" class="button secondary compact" type="button">Expand JSON</button>
+          </div>
+        </div>
+        <pre class="raw-json"><code id="rawJson" class="language-json">[]</code></pre>
+      </section>
+    </main>
+
+    <script>
+      window.Prism = window.Prism || {};
+      window.Prism.manual = true;
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-core.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-json.min.js"></script>
+    <script type="module" src="./src/prebuilt-models.js"></script>
+  </body>
+</html>

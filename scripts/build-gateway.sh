@@ -51,7 +51,7 @@ build_one() {
   rm -rf "$package_dir"
   mkdir -p "$package_dir"
   if [ "$PACKAGE_MODE" = "files" ]; then
-    cp README.md index.html server.html client.html server-same-origin.html client-same-origin.html "$package_dir/"
+    cp README.md index.html server.html client.html prebuilt-models.html server-same-origin.html client-same-origin.html "$package_dir/"
     cp -R src "$package_dir/"
     cp -R vendor "$package_dir/"
   else
