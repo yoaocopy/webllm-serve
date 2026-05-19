@@ -346,20 +346,8 @@ WebLLM documents OpenAI-style function calling as WIP/preliminary support using
 `tools` and `tool_choice`. Some model-specific implementations may still reject
 certain combinations. For example, Hermes 2 Pro has been observed to reject
 `tools` when a custom Jupyter AI system prompt is also present. In that case the
-gateway reports the WebLLM error instead of rewriting the prompt or silently
-choosing tools itself.
-
-For explicit compatibility testing, `server.html` includes a manual switch:
-
-```text
-Drop system messages when tools are present
-```
-
-It is off by default. When enabled, and only when the incoming request contains
-OpenAI `tools`, `server.html` removes `role: "system"` messages before calling
-WebLLM. This is useful for testing model-specific restrictions such as Hermes 2
-Pro's tool-calling limitation with custom system prompts. The conversion is
-reported in the request logs under `engine transforms`.
+gateway reports the WebLLM error instead of rewriting the prompt, removing
+system messages, or silently choosing tools itself.
 
 ## Curl And SDK Examples
 

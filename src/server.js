@@ -15,7 +15,6 @@ const el = {
   autoDownload: document.querySelector("#autoDownload"),
   showRequests: document.querySelector("#showRequests"),
   showResponses: document.querySelector("#showResponses"),
-  dropSystemForTools: document.querySelector("#dropSystemForTools"),
   loadModel: document.querySelector("#loadModel"),
   unloadModel: document.querySelector("#unloadModel"),
   clearModelCache: document.querySelector("#clearModelCache"),
@@ -302,24 +301,7 @@ function makeEngineRequest(request) {
     ...engineRequest
   } = request || {};
 
-  if (shouldDropSystemForTools(request)) {
-    engineRequest.messages = dropSystemMessages(engineRequest.messages);
-  }
-
   return engineRequest;
-}
-
-function shouldDropSystemForTools(request) {
-  return Boolean(
-    el.dropSystemForTools?.checked &&
-      Array.isArray(request?.tools) &&
-      request.tools.length > 0 &&
-      Array.isArray(request?.messages),
-  );
-}
-
-function dropSystemMessages(messages) {
-  return messages.filter((message) => message?.role !== "system");
 }
 
 function normalizeMessageContent(content) {
@@ -464,28 +446,15 @@ function makeRequestDiagnostics(request) {
 }
 
 function makeEngineTransformReport(request, engineRequest) {
-  const originalMessages = Array.isArray(request?.messages) ? request.messages : [];
-  const engineMessages = Array.isArray(engineRequest?.messages) ? engineRequest.messages : [];
   const droppedFields = [];
   const reasons = {};
   if ("model" in (request || {})) {
     droppedFields.push("model");
     reasons.model = "WebLLM engine uses the model loaded in server.html.";
   }
-  const originalSystemCount = originalMessages.filter((message) => message?.role === "system").length;
-  const engineSystemCount = engineMessages.filter((message) => message?.role === "system").length;
-  if (originalSystemCount > engineSystemCount) {
-    droppedFields.push("messages[role=system]");
-    reasons["messages[role=system]"] =
-      "Explicit server.html compatibility switch is enabled: Drop system messages when tools are present.";
-  }
   return {
     droppedFields,
     reasons,
-    originalMessageCount: originalMessages.length,
-    engineMessageCount: engineMessages.length,
-    originalSystemCount,
-    engineSystemCount,
   };
 }
 
