@@ -19,7 +19,8 @@ export const translations = {
     defaultPortValue: "21434 起，自动向上寻找",
     stepsLabel: "使用步骤",
     stepStartGatewayTitle: "启动 gateway",
-    stepStartGatewayBody: "在仓库根目录运行 go run .，或运行编译后的二进制文件。",
+    stepStartGatewayCommand: "webllm-gateway.exe",
+    stepStartGatewayBody: "运行 release 的可执行文件",
     stepLoadModelTitle: "加载模型",
     stepLoadModelBody: "打开服务端页面，选择模型并保持该浏览器标签页运行。",
     stepUseApiTitle: "开始调用",
@@ -27,7 +28,9 @@ export const translations = {
     homePortNote:
       "端口默认从 21434 开始；如果端口被占用，gateway 会自动向上寻找可用端口，并把结果写入 webllm-gateway-config.json。跨页面和外部请求都应以 gateway 启动日志显示的实际端口为准。",
     homeBinaryNote:
-      "Windows 二进制示例：.\\webllm-gateway-windows-amd64.exe。macOS 二进制示例：./webllm-gateway-darwin-arm64。",
+      "直接运行 release 目录中适合你电脑平台和架构的可执行文件即可。Windows 使用 webllm-gateway.exe，macOS/Linux 使用 webllm-gateway。",
+    homeDevRunNote:
+      "开发者也可以在安装 Go 并下载完整项目文件夹后，从仓库根目录运行 go run .。这种方式会读取当前工作目录中的页面文件，适合开发调试。",
     apiExamplesSummary: "查看 curl、CLI、OpenAI SDK 调用示例",
     apiExamplesIntro: "以下示例使用问题 who are you。示例 URL 会优先使用当前 gateway 实际 API 地址。Windows 11 用户可优先参考 CMD、PowerShell 或 Windows Terminal 说明；WSL 访问 Windows 本机端口时可能需要额外处理。",
     windowsCmdExampleTitle: "Windows 11 CMD",
@@ -132,7 +135,8 @@ export const translations = {
     defaultPortValue: "Starts at 21434, then searches upward",
     stepsLabel: "Usage steps",
     stepStartGatewayTitle: "Start gateway",
-    stepStartGatewayBody: "Run go run . from the repository root, or run a compiled gateway binary.",
+    stepStartGatewayCommand: "webllm-gateway.exe",
+    stepStartGatewayBody: "Run the released executable file.",
     stepLoadModelTitle: "Load a model",
     stepLoadModelBody: "Open the server page, choose a model, and keep that browser tab running.",
     stepUseApiTitle: "Start calling",
@@ -140,7 +144,9 @@ export const translations = {
     homePortNote:
       "The default port starts at 21434. If it is occupied, the gateway searches upward and writes the selected address to webllm-gateway-config.json. Browser pages and external callers should use the actual port printed by the gateway startup log.",
     homeBinaryNote:
-      "Windows binary example: .\\webllm-gateway-windows-amd64.exe. macOS binary example: ./webllm-gateway-darwin-arm64.",
+      "Run the executable that matches your platform and architecture inside release. Use webllm-gateway.exe on Windows, or webllm-gateway on macOS/Linux.",
+    homeDevRunNote:
+      "Developers can also install Go, download the full project folder, and run go run . from the repository root. This mode serves page files from the current working directory and is useful for development.",
     apiExamplesSummary: "Show curl, CLI, and OpenAI SDK examples",
     apiExamplesIntro: "The examples below ask who are you. The example URL follows the current gateway API address when available. Windows 11 users can start with the CMD, PowerShell, or Windows Terminal notes. WSL may need extra handling to reach a gateway running on Windows.",
     windowsCmdExampleTitle: "Windows 11 CMD",

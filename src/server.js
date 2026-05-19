@@ -50,6 +50,7 @@ let loadedRuntime = "";
 let busy = false;
 let gatewaySocket = null;
 let gatewayConnected = false;
+let prismFallbackLoading = false;
 const webllmModules = new Map();
 
 const channel = new BroadcastChannel(CHANNEL_NAME);
@@ -79,6 +80,10 @@ function init() {
   document.addEventListener("click", closeModelComboOnOutsideClick);
   document.addEventListener("keydown", closeModelComboOnEscape);
   window.addEventListener("webllm-language-change", refreshLocalizedState);
+  window.addEventListener("load", highlightServerExamples);
+  window.addEventListener("prism-ready", highlightServerExamples);
+  window.addEventListener("load", highlightServerLogs);
+  window.addEventListener("prism-ready", highlightServerLogs);
   channel.addEventListener("message", onBridgeMessage);
   window.setInterval(announceReady, 2000);
   renderServerPythonExample();
@@ -254,6 +259,36 @@ response = client.chat.completions.create(
 )
 
 print(response.choices[0].message.content)`;
+  highlightServerExamples();
+}
+
+function highlightServerExamples() {
+  if (!el.serverPythonExample) {
+    return;
+  }
+  if (!window.Prism || !window.Prism.languages?.python || !window.Prism.languages?.json) {
+    loadPrismFallback();
+    return;
+  }
+  window.Prism.highlightElement(el.serverPythonExample);
+}
+
+function loadPrismFallback() {
+  if (prismFallbackLoading) {
+    return;
+  }
+  prismFallbackLoading = true;
+  const fallback = document.createElement("script");
+  fallback.src = "./vendor/prism/prism.js";
+  fallback.defer = true;
+  fallback.onload = () => {
+    prismFallbackLoading = false;
+    window.dispatchEvent(new Event("prism-ready"));
+  };
+  fallback.onerror = () => {
+    prismFallbackLoading = false;
+  };
+  document.head.append(fallback);
 }
 
 async function getWebLLM(modelId) {
@@ -841,9 +876,15 @@ function logItem(kind, value) {
   entry.className = `log-entry ${kind}`;
   const time = new Date().toLocaleTimeString();
   const body = typeof value === "string" ? value : JSON.stringify(value, null, 2);
-  entry.innerHTML = `<header><strong>${kind}</strong><span>${time}</span></header><pre></pre>`;
-  entry.querySelector("pre").textContent = body;
+  const isJson = typeof value !== "string";
+  entry.innerHTML = `<header><strong>${kind}</strong><span>${time}</span></header><pre><code></code></pre>`;
+  const code = entry.querySelector("code");
+  if (isJson) {
+    code.className = "language-json";
+  }
+  code.textContent = body;
   el.logs.prepend(entry);
+  highlightLogCode(code);
 }
 
 function startStreamLog() {
@@ -855,14 +896,14 @@ function startStreamLog() {
     <div class="stream-log-content"></div>
     <details>
       <summary>latest chunk</summary>
-      <pre></pre>
+      <pre><code class="language-json"></code></pre>
     </details>
   `;
   el.logs.prepend(entry);
   return {
     entry,
     content: entry.querySelector(".stream-log-content"),
-    latest: entry.querySelector("pre"),
+    latest: entry.querySelector("code"),
   };
 }
 
@@ -876,6 +917,7 @@ function appendStreamLog(streamLog, chunk) {
     streamLog.content.textContent += delta;
   }
   streamLog.latest.textContent = JSON.stringify(chunk, null, 2);
+  highlightLogCode(streamLog.latest);
 }
 
 function finishStreamLog(streamLog) {
@@ -883,6 +925,21 @@ function finishStreamLog(streamLog) {
     return;
   }
   streamLog.content.textContent = "(no text delta)";
+}
+
+function highlightLogCode(code) {
+  if (!code?.classList.contains("language-json")) {
+    return;
+  }
+  if (!window.Prism || !window.Prism.languages?.json) {
+    loadPrismFallback();
+    return;
+  }
+  window.Prism.highlightElement(code);
+}
+
+function highlightServerLogs() {
+  el.logs.querySelectorAll("code.language-json").forEach(highlightLogCode);
 }
 
 function extractStreamDelta(chunk) {

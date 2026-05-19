@@ -4,7 +4,7 @@ export const SERVER_STATE_KEY = "webllm-serve-state";
 export const SAME_ORIGIN_SERVER_STATE_KEY = "webllm-serve-state-same-origin";
 
 export const MODEL_CATALOG = [
-  { alias: "default", id: "Qwen3.5-2B-q4f16_1-MLC" },
+  { alias: "default", id: "Qwen2.5-1.5B-Instruct-q4f16_1-MLC" },
   { alias: "m001", id: "gemma3-1b-it-q4f16_1-MLC" },
   { alias: "m002", id: "Hermes-2-Pro-Mistral-7B-q4f16_1-MLC" },
   { alias: "m003", id: "Llama-3.2-1B-Instruct-q4f16_1-MLC" },

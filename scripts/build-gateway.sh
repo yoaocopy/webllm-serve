@@ -53,6 +53,7 @@ build_one() {
   if [ "$PACKAGE_MODE" = "files" ]; then
     cp README.md index.html server.html client.html server-same-origin.html client-same-origin.html "$package_dir/"
     cp -R src "$package_dir/"
+    cp -R vendor "$package_dir/"
   else
     cp README.md "$package_dir/"
   fi

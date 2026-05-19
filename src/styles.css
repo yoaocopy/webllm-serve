@@ -185,6 +185,12 @@ pre {
 }
 
 .home-status code {
+  display: inline-block;
+  max-width: 100%;
+  border: 1px solid #c7ddd7;
+  border-radius: 7px;
+  padding: 6px 8px;
+  background: #f8fbfa;
   overflow-wrap: anywhere;
   color: var(--accent-strong);
   font-size: 14px;
@@ -227,6 +233,21 @@ pre {
   margin: 0;
   color: var(--muted);
   line-height: 1.6;
+}
+
+.home-steps code {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid #c7ddd7;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #f8fbfa;
+  color: var(--accent-strong);
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.45;
+  box-shadow: inset 3px 0 0 #8cc5b8;
 }
 
 .button.compact {
@@ -296,13 +317,18 @@ pre {
   max-width: 100%;
   overflow: auto;
   margin: 0;
-  border: 1px solid var(--line);
+  border: 1px solid #d7dfdc;
   border-radius: 8px;
-  padding: 12px;
-  background: #fbfcfb;
-  color: var(--ink);
+  padding: 14px;
+  background: #f8faf9;
+  color: #223037;
   font-size: 12px;
   line-height: 1.55;
+  box-shadow: inset 3px 0 0 #8cc5b8;
+}
+
+.example-grid code {
+  color: inherit;
 }
 
 .server-example-panel {
@@ -564,6 +590,17 @@ pre {
 .info-list dd {
   margin: 0;
   line-height: 1.5;
+}
+
+.info-list code {
+  display: inline-block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  border: 1px solid #c7ddd7;
+  border-radius: 7px;
+  padding: 3px 7px;
+  background: #f4faf8;
+  color: var(--ink);
 }
 
 .logs {

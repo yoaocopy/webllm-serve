@@ -96,6 +96,7 @@ foreach ($target in $targets) {
   }
   if ($PackageMode -eq "files") {
     Copy-Item -Recurse -Path "src" -Destination $packageDir
+    Copy-Item -Recurse -Path "vendor" -Destination $packageDir
   }
   Copy-Item -Path $output -Destination (Join-Path $packageDir $target.Binary)
 

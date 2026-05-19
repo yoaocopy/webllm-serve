@@ -4,6 +4,28 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>WebLLM Serve</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism.css"
+      onerror="this.onerror=null;this.href='./vendor/prism/prism.css';"
+    />
+    <script>
+      window.Prism = window.Prism || {};
+      window.Prism.manual = true;
+      window.addEventListener(
+        "error",
+        (event) => {
+          if (event.target?.id === "prismCdnScript") {
+            const fallback = document.createElement("script");
+            fallback.src = "./vendor/prism/prism.js";
+            fallback.defer = true;
+            fallback.onload = () => window.dispatchEvent(new Event("prism-ready"));
+            document.head.append(fallback);
+          }
+        },
+        true,
+      );
+    </script>
     <link rel="stylesheet" href="./src/styles.css" />
   </head>
   <body>
@@ -29,8 +51,8 @@
           <div class="home-actions">
             <a class="button primary" href="./server.html" target="_blank" rel="noopener" data-i18n="openServer">打开服务端</a>
             <a class="button secondary" href="./client.html" target="_blank" rel="noopener" data-i18n="openClient">打开 HTTP 客户端</a>
-            <a class="button secondary" href="./server-same-origin.html" target="_blank" rel="noopener" data-i18n="sameOriginServer">同源服务端</a>
-            <a class="button secondary" href="./client-same-origin.html" target="_blank" rel="noopener" data-i18n="sameOriginClient">同源客户端</a>
+            <a class="button secondary"  style="display: none" href="./server-same-origin.html" target="_blank" rel="noopener" data-i18n="sameOriginServer">同源服务端</a>
+            <a class="button secondary" style="display: none" href="./client-same-origin.html" target="_blank" rel="noopener" data-i18n="sameOriginClient">同源客户端</a>
           </div>
         </div>
         <aside class="home-status" data-i18n-aria-label="gatewayInfo" aria-label="Gateway 信息">
@@ -53,8 +75,8 @@
         <article>
           <span>1</span>
           <h2 data-i18n="stepStartGatewayTitle">启动 gateway</h2>
-          <p><code>go run .</code></p>
-          <p data-i18n="stepStartGatewayBody">在仓库根目录运行 go run .，或运行编译后的二进制文件。</p>
+          <p><code data-i18n="stepStartGatewayCommand">webllm-gateway.exe</code></p>
+          <p data-i18n="stepStartGatewayBody">运行 release 文件夹中适合你电脑架构的 webllm-gateway.exe。</p>
         </article>
         <article>
           <span>2</span>
@@ -77,42 +99,42 @@
 
           <article>
             <h2 data-i18n="windowsCmdExampleTitle">Windows 11 CMD</h2>
-            <pre><code id="windowsCmdExample"></code></pre>
+            <pre><code id="windowsCmdExample" class="language-batch"></code></pre>
           </article>
 
           <article>
             <h2 data-i18n="windowsPowershellExampleTitle">Windows 11 PowerShell</h2>
-            <pre><code id="windowsPowershellExample"></code></pre>
+            <pre><code id="windowsPowershellExample" class="language-powershell"></code></pre>
           </article>
 
           <details class="example-subpanel">
             <summary data-i18n="windowsPowershellUtf8ExampleTitle">PowerShell UTF-8 Characters</summary>
-            <pre><code id="windowsPowershellUtf8Example"></code></pre>
+            <pre><code id="windowsPowershellUtf8Example" class="language-powershell"></code></pre>
           </details>
 
           <article>
             <h2 data-i18n="windowsTerminalExampleTitle">Windows Terminal 说明</h2>
-            <pre><code id="windowsTerminalExample"></code></pre>
+            <pre><code id="windowsTerminalExample" class="language-bash"></code></pre>
           </article>
 
           <article>
             <h2 data-i18n="curlExampleTitle">curl</h2>
-            <pre><code id="curlExample"></code></pre>
+            <pre><code id="curlExample" class="language-bash"></code></pre>
           </article>
 
           <article>
             <h2 data-i18n="cliExampleTitle">OpenAI CLI 风格</h2>
-            <pre><code id="cliExample"></code></pre>
+            <pre><code id="cliExample" class="language-bash"></code></pre>
           </article>
 
           <article>
             <h2 data-i18n="pythonSdkExampleTitle">OpenAI Python SDK</h2>
-            <pre><code id="pythonSdkExample"></code></pre>
+            <pre><code id="pythonSdkExample" class="language-python"></code></pre>
           </article>
 
           <article>
             <h2 data-i18n="nodeSdkExampleTitle">OpenAI Node SDK</h2>
-            <pre><code id="nodeSdkExample"></code></pre>
+            <pre><code id="nodeSdkExample" class="language-javascript"></code></pre>
           </article>
         </div>
       </details>
@@ -123,11 +145,21 @@
           webllm-gateway-config.json。跨页面和外部请求都应以 gateway 启动日志显示的实际端口为准。
         </p>
         <p data-i18n="homeBinaryNote">
-          Windows 二进制示例：.\webllm-gateway-windows-amd64.exe。macOS 二进制示例：./webllm-gateway-darwin-arm64。
+          直接运行 release 目录中适合你电脑平台和架构的可执行文件即可。Windows 使用 webllm-gateway.exe，macOS/Linux 使用 webllm-gateway。
+        </p>
+        <p data-i18n="homeDevRunNote" style="display: none">
+          开发者也可以在安装 Go 并下载完整项目文件夹后，从仓库根目录运行 go run .。这种方式会读取当前工作目录中的页面文件，适合开发调试。
         </p>
       </section>
     </main>
 
+    <script id="prismCdnScript" defer src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-core.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-clike.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-javascript.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-python.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-powershell.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-bash.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-batch.min.js"></script>
     <script type="module" src="./src/home.js"></script>
   </body>
 </html>

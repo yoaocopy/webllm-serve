@@ -148,8 +148,20 @@ const response = await client.chat.completions.create({
 });
 
 console.log(response.choices[0].message.content);`;
+  highlightExamples();
+}
+
+function highlightExamples() {
+  if (!window.Prism) {
+    return;
+  }
+  document.querySelectorAll(".example-grid code").forEach((block) => {
+    window.Prism.highlightElement(block);
+  });
 }
 
 mountLanguageSelect();
 renderApiExamples();
 updateGatewayInfo().finally(renderApiExamples);
+window.addEventListener("load", highlightExamples);
+window.addEventListener("prism-ready", highlightExamples);

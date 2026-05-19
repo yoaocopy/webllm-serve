@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-//go:embed index.html server.html client.html server-same-origin.html client-same-origin.html src/*
+//go:embed index.html server.html client.html server-same-origin.html client-same-origin.html src/* vendor/*
 var staticFiles embed.FS
 
 func staticFileSystem() http.FileSystem {

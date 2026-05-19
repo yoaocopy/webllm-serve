@@ -4,6 +4,28 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>WebLLM Serve - Server</title>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/prismjs@1/themes/prism.css"
+      onerror="this.onerror=null;this.href='./vendor/prism/prism.css';"
+    />
+    <script>
+      window.Prism = window.Prism || {};
+      window.Prism.manual = true;
+      window.addEventListener(
+        "error",
+        (event) => {
+          if (event.target?.id === "prismCdnScript") {
+            const fallback = document.createElement("script");
+            fallback.src = "./vendor/prism/prism.js";
+            fallback.defer = true;
+            fallback.onload = () => window.dispatchEvent(new Event("prism-ready"));
+            document.head.append(fallback);
+          }
+        },
+        true,
+      );
+    </script>
     <link rel="stylesheet" href="./src/styles.css" />
   </head>
   <body>
@@ -94,7 +116,7 @@
               <p class="small-note" data-i18n="serverPythonExampleIntro">
                 保持本页连接 Gateway 并加载模型后，可以用 OpenAI Python SDK 调用当前本地 API。
               </p>
-              <pre><code id="serverPythonExample"></code></pre>
+              <pre><code id="serverPythonExample" class="language-python"></code></pre>
             </div>
           </details>
         </div>
@@ -109,6 +131,10 @@
       </section>
     </main>
 
+    <script id="prismCdnScript" defer src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-core.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-clike.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-python.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/prismjs@1/components/prism-json.min.js"></script>
     <script type="module" src="./src/server.js"></script>
   </body>
 </html>
