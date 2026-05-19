@@ -207,11 +207,16 @@ func (g *Gateway) handleModels(w http.ResponseWriter, r *http.Request) {
 	g.mu.Unlock()
 
 	data := make([]map[string]string, 0, len(models))
-	for _, model := range models {
+	for index, model := range models {
+		alias := fmt.Sprintf("m%03d", index)
+		if index == 0 {
+			alias = "default"
+		}
 		data = append(data, map[string]string{
 			"id":       model,
 			"object":   "model",
 			"owned_by": "webllm",
+			"alias":    alias,
 		})
 	}
 

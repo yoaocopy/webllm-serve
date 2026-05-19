@@ -382,7 +382,7 @@ client = OpenAI(
 )
 
 response = client.chat.completions.create(
-    model="server-loaded-model",
+    model="default",
     messages=[{"role": "user", "content": "你是谁"}],
     max_tokens=128,
 )
@@ -401,7 +401,7 @@ const client = new OpenAI({
 });
 
 const response = await client.chat.completions.create({
-  model: "server-loaded-model",
+  model: "default",
   messages: [{ role: "user", content: "你是谁" }],
   max_tokens: 128,
 });
@@ -409,9 +409,10 @@ const response = await client.chat.completions.create({
 console.log(response.choices[0].message.content);
 ```
 
-The `model` field is accepted for OpenAI SDK compatibility. When omitted by the
-browser client, the gateway/server uses the model currently loaded in
-`server.html`.
+The `model` field is accepted for OpenAI SDK compatibility. `default` is the
+recommended example value and currently resolves to
+`Qwen3.5-2B-q4f16_1-MLC`. When omitted by the browser client, the
+gateway/server uses the model currently loaded in `server.html`.
 
 ## Static Same-Origin Demo
 
@@ -452,15 +453,34 @@ where WebLLM runs in the browser/WebGPU environment.
 
 The server page includes these preset model IDs:
 
-- `Qwen3.5-0.8B-q4f16_1-MLC`
 - `Qwen3.5-2B-q4f16_1-MLC`
+- `Qwen3.5-0.8B-q4f16_1-MLC`
 - `Qwen2.5-1.5B-Instruct-q4f16_1-MLC`
 - `Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC`
 - `Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC`
 - `gemma3-1b-it-q4f16_1-MLC`
 - `Qwen2.5-0.5B-Instruct-q4f16_1-MLC`
 - `Llama-3.2-1B-Instruct-q4f16_1-MLC`
+- `Hermes-2-Pro-Mistral-7B-q4f16_1-MLC`
 - `sft_model_1.5B-q4f16_1-MLC (Hugging Face)`
+
+The model picker shows entries as:
+
+```text
+alias - model id
+```
+
+External API callers can use either the alias or the full model ID in the
+OpenAI-compatible `model` field. The first entry is an extra alias:
+
+```text
+default - Qwen3.5-2B-q4f16_1-MLC
+```
+
+The same model also keeps its normal numbered alias, so changing the default
+later only requires editing the `default` entry in `src/models.js`. `current`
+and `loaded` are reserved aliases for the model currently loaded in
+`server.html`.
 
 The custom Hugging Face model is registered as a WebLLM `ModelRecord` in
 `src/models.js` and reuses the Qwen2 1.5B WebGPU wasm library from `v0_2_48`:
@@ -682,15 +702,18 @@ This is important for Gemma3: its custom record intentionally contains only
 Before adding a new model:
 
 1. Confirm the exact `model_id` expected by WebLLM.
-2. Check whether the model is already in the selected WebLLM runtime's
+2. Add the model to `MODEL_CATALOG` in `src/models.js` with a stable alias.
+   Keep `default` as a separate first entry so it can be changed without
+   renumbering the regular aliases.
+3. Check whether the model is already in the selected WebLLM runtime's
    `prebuiltAppConfig`.
-3. If it is built-in, prefer the built-in `model` and `model_lib`.
-4. If it is custom, provide a complete `ModelRecord`, including a compatible
+4. If it is built-in, prefer the built-in `model` and `model_lib`.
+5. If it is custom, provide a complete `ModelRecord`, including a compatible
    `model_lib`.
-5. Match the WebLLM runtime version with the wasm library version.
-6. Avoid changing runtime versions globally just to fix one model; use
+6. Match the WebLLM runtime version with the wasm library version.
+7. Avoid changing runtime versions globally just to fix one model; use
    model-specific runtime selection when necessary.
-7. Do not add hidden generation defaults in the server. Let the client/request
+8. Do not add hidden generation defaults in the server. Let the client/request
    own `temperature`, `top_p`, `max_tokens`, `stop`, and related parameters.
 
 ### Common Error Map

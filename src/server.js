@@ -1,4 +1,13 @@
-import { CHANNEL_NAME, CUSTOM_MODEL_RECORDS, MODEL_IDS, SERVER_STATE_KEY } from "./models.js";
+import {
+  CHANNEL_NAME,
+  CUSTOM_MODEL_RECORDS,
+  MODEL_CATALOG,
+  MODEL_IDS,
+  SERVER_STATE_KEY,
+  formatModelOption,
+  makeModelListData,
+  resolveModelId,
+} from "./models.js";
 import { mountLanguageSelect, t } from "./i18n.js";
 
 const SFT_MODEL_ID = "sft_model_1.5B-q4f16_1-MLC (Hugging Face)";
@@ -10,7 +19,11 @@ const WEBLLM_RUNTIME = {
 const el = {
   serverStatus: document.querySelector("#serverStatus"),
   webgpuStatus: document.querySelector("#webgpuStatus"),
+  modelSearch: document.querySelector("#modelSearch"),
   modelSelect: document.querySelector("#modelSelect"),
+  modelComboButton: document.querySelector("#modelComboButton"),
+  modelComboPanel: document.querySelector("#modelComboPanel"),
+  modelOptionList: document.querySelector("#modelOptionList"),
   customModel: document.querySelector("#customModel"),
   autoDownload: document.querySelector("#autoDownload"),
   showRequests: document.querySelector("#showRequests"),
@@ -23,6 +36,7 @@ const el = {
   currentModel: document.querySelector("#currentModel"),
   gatewayUrl: document.querySelector("#gatewayUrl"),
   gatewayApiUrl: document.querySelector("#gatewayApiUrl"),
+  serverPythonExample: document.querySelector("#serverPythonExample"),
   gatewayStatus: document.querySelector("#gatewayStatus"),
   connectGateway: document.querySelector("#connectGateway"),
   disconnectGateway: document.querySelector("#disconnectGateway"),
@@ -42,12 +56,7 @@ const channel = new BroadcastChannel(CHANNEL_NAME);
 
 function init() {
   mountLanguageSelect();
-  for (const model of MODEL_IDS) {
-    const option = document.createElement("option");
-    option.value = model;
-    option.textContent = model;
-    el.modelSelect.append(option);
-  }
+  renderModelOptions();
 
   updateWebGPUStatus();
   setStatus(t("waiting"), "ready");
@@ -63,9 +72,16 @@ function init() {
   el.clearLogs.addEventListener("click", () => (el.logs.innerHTML = ""));
   el.connectGateway?.addEventListener("click", connectGateway);
   el.disconnectGateway?.addEventListener("click", disconnectGateway);
+  el.modelComboButton?.addEventListener("click", toggleModelCombo);
+  el.modelSearch?.addEventListener("input", renderModelOptions);
+  el.modelSelect.addEventListener("change", renderServerPythonExample);
+  el.customModel.addEventListener("input", renderServerPythonExample);
+  document.addEventListener("click", closeModelComboOnOutsideClick);
+  document.addEventListener("keydown", closeModelComboOnEscape);
   window.addEventListener("webllm-language-change", refreshLocalizedState);
   channel.addEventListener("message", onBridgeMessage);
   window.setInterval(announceReady, 2000);
+  renderServerPythonExample();
   initGatewayConfig().finally(connectGateway);
 }
 
@@ -85,6 +101,7 @@ async function initGatewayConfig() {
     }
     if (config.base_url && el.gatewayApiUrl) {
       el.gatewayApiUrl.textContent = config.base_url;
+      renderServerPythonExample();
     }
   } catch {
     // Static deployments may not have a generated gateway config.
@@ -108,6 +125,135 @@ function refreshLocalizedState() {
 function getSelectedModel() {
   const custom = el.customModel.value.trim();
   return custom || el.modelSelect.value;
+}
+
+function renderModelOptions() {
+  const selected = el.modelSelect.value;
+  const query = (el.modelSearch?.value || "").trim().toLowerCase();
+  const models = MODEL_CATALOG.filter((model) => {
+    if (!query) {
+      return true;
+    }
+    return model.alias.toLowerCase().includes(query) || model.id.toLowerCase().includes(query);
+  });
+
+  el.modelSelect.innerHTML = "";
+  el.modelOptionList.innerHTML = "";
+  for (const model of MODEL_CATALOG) {
+    const option = document.createElement("option");
+    option.value = model.id;
+    option.textContent = formatModelOption(model);
+    el.modelSelect.append(option);
+  }
+
+  if (selected && MODEL_CATALOG.some((model) => model.id === selected)) {
+    el.modelSelect.value = selected;
+  }
+
+  const visibleModels = models;
+  if (!visibleModels.length) {
+    const empty = document.createElement("div");
+    empty.className = "model-option model-option-empty";
+    empty.textContent = t("modelNoMatches");
+    el.modelOptionList.append(empty);
+  }
+  for (const model of visibleModels) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "model-option";
+    button.textContent = formatModelOption(model);
+    button.dataset.modelId = model.id;
+    button.setAttribute("role", "option");
+    button.setAttribute("aria-selected", model.id === selected ? "true" : "false");
+    button.addEventListener("click", () => selectModel(model.id));
+    el.modelOptionList.append(button);
+  }
+
+  updateModelComboButton();
+  renderServerPythonExample();
+}
+
+function selectModel(modelId) {
+  el.modelSelect.value = modelId;
+  el.modelSearch.value = "";
+  renderModelOptions();
+  closeModelCombo();
+  renderServerPythonExample();
+}
+
+function updateModelComboButton() {
+  if (!el.modelComboButton) {
+    return;
+  }
+  const selected = MODEL_CATALOG.find((model) => model.id === el.modelSelect.value) || MODEL_CATALOG[0];
+  el.modelComboButton.textContent = selected ? formatModelOption(selected) : "";
+}
+
+function toggleModelCombo() {
+  if (el.modelComboPanel.hidden) {
+    openModelCombo();
+  } else {
+    closeModelCombo();
+  }
+}
+
+function openModelCombo() {
+  const rect = el.modelComboButton.getBoundingClientRect();
+  const below = window.innerHeight - rect.bottom - 16;
+  const above = rect.top - 16;
+  const openUp = below < 220 && above > below;
+  const availableHeight = Math.max(120, openUp ? above : below);
+  const listHeight = Math.max(80, Math.min(340, availableHeight - 72));
+  el.modelComboPanel.classList.toggle("open-up", openUp);
+  el.modelComboPanel.style.setProperty("--model-options-max-height", `${listHeight}px`);
+  el.modelComboPanel.hidden = false;
+  el.modelComboButton.setAttribute("aria-expanded", "true");
+  el.modelSearch.focus();
+}
+
+function closeModelCombo() {
+  el.modelComboPanel.hidden = true;
+  el.modelComboButton.setAttribute("aria-expanded", "false");
+}
+
+function closeModelComboOnOutsideClick(event) {
+  if (el.modelComboPanel.hidden || event.target.closest(".model-picker")) {
+    return;
+  }
+  closeModelCombo();
+}
+
+function closeModelComboOnEscape(event) {
+  if (event.key === "Escape" && !el.modelComboPanel.hidden) {
+    closeModelCombo();
+    el.modelComboButton.focus();
+  }
+}
+
+function renderServerPythonExample() {
+  if (!el.serverPythonExample) {
+    return;
+  }
+
+  const baseUrl = (el.gatewayApiUrl?.textContent || "http://127.0.0.1:21434/v1").trim().replace(/\/$/, "");
+  const model = loadedModel ? "loaded" : getSelectedModel() || "default";
+  el.serverPythonExample.textContent = `from openai import OpenAI
+
+client = OpenAI(
+    base_url="${baseUrl}",
+    api_key="webllm-local",
+)
+
+response = client.chat.completions.create(
+    model="${model}",
+    messages=[
+        {"role": "system", "content": "You are a concise local assistant."},
+        {"role": "user", "content": "who are you"},
+    ],
+    max_tokens=128,
+)
+
+print(response.choices[0].message.content)`;
 }
 
 async function getWebLLM(modelId) {
@@ -226,6 +372,7 @@ async function loadModel(modelId) {
 
     loadedModel = modelId;
     el.currentModel.textContent = modelId;
+    renderServerPythonExample();
     setProgress(100, t("loadedProgress", { model: modelId }));
     setStatus(t("serving"), "ready");
     logItem("system", t("loadedLog", { model: modelId }));
@@ -244,6 +391,7 @@ function unloadModel() {
   loadedModel = "";
   loadedRuntime = "";
   el.currentModel.textContent = t("notLoaded");
+  renderServerPythonExample();
   setProgress(0, t("releasedProgress"));
   setStatus(t("waiting"), "ready");
   announceReady();
@@ -490,7 +638,7 @@ async function onBridgeMessage(event) {
       id: message.id,
       response: {
         object: "list",
-        data: MODEL_IDS.map((id) => ({ id, object: "model", owned_by: "webllm" })),
+        data: makeModelListData(),
       },
     });
     return;
@@ -525,7 +673,8 @@ async function processChatCompletion(request, callbacks) {
       logItem("diagnostics", makeRequestDiagnostics(request));
     }
 
-    const requestedModel = request.model || loadedModel || getSelectedModel();
+    const requestedModel = resolveModelId(request.model, { loadedModel, selectedModel: getSelectedModel() });
+    request = { ...request, model: requestedModel };
     if (!engine || loadedModel !== requestedModel) {
       if (!el.autoDownload.checked) {
         throw new Error(`Model ${requestedModel} is not loaded and auto load is disabled.`);

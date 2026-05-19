@@ -116,7 +116,7 @@ curl http://$WIN_HOST:${port}/v1/chat/completions \\
   document.querySelector("#cliExample").textContent = `OPENAI_BASE_URL="${baseUrl}" \\
 OPENAI_API_KEY="webllm-local" \\
 openai api chat.completions.create \\
-  -m local \\
+  -m default \\
   -g user "${question}"`;
 
   document.querySelector("#pythonSdkExample").textContent = `from openai import OpenAI
@@ -127,7 +127,7 @@ client = OpenAI(
 )
 
 response = client.chat.completions.create(
-    model="local",
+    model="default",
     messages=[{"role": "user", "content": "${question}"}],
     max_tokens=128,
 )
@@ -142,7 +142,7 @@ const client = new OpenAI({
 });
 
 const response = await client.chat.completions.create({
-  model: "local",
+  model: "default",
   messages: [{ role: "user", content: "${question}" }],
   max_tokens: 128,
 });

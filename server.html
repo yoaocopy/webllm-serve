@@ -31,10 +31,17 @@
             <h2 data-i18n="modelPanelTitle">模型</h2>
             <span id="webgpuStatus" class="muted" data-i18n="checkWebGPU">检查 WebGPU...</span>
           </div>
-          <label class="field">
-            <span data-i18n="modelSelectLabel">选择模型</span>
-            <select id="modelSelect"></select>
-          </label>
+          <div class="field">
+            <span data-i18n="modelSelectLabel">选择模型（alias - model id，API 可使用 alias 或 model id）</span>
+            <div class="model-picker">
+              <button id="modelComboButton" class="model-combo-button" type="button" aria-haspopup="listbox" aria-expanded="false"></button>
+              <div id="modelComboPanel" class="model-combo-panel" hidden>
+                <input id="modelSearch" data-i18n-placeholder="modelSearchPlaceholder" placeholder="输入 alias 或 model id 过滤模型" />
+                <div id="modelOptionList" class="model-option-list" role="listbox"></div>
+              </div>
+              <select id="modelSelect" class="sr-only" aria-hidden="true" tabindex="-1"></select>
+            </div>
+          </div>
           <label class="field">
             <span data-i18n="customModelLabel">自定义模型 ID 或 URL</span>
             <input id="customModel" data-i18n-placeholder="customModelPlaceholder" placeholder="可选：输入 model_id 或 Hugging Face URL" />
@@ -81,6 +88,15 @@
           <p class="small-note" data-i18n="gatewayNote">
             这里连接 Go gateway。外部 OpenAI HTTP 请求会经 WebSocket 转发到本页运行的 WebLLM。
           </p>
+          <details class="example-panel server-example-panel">
+            <summary data-i18n="serverPythonExampleSummary">Python API Client 示例</summary>
+            <div class="example-grid">
+              <p class="small-note" data-i18n="serverPythonExampleIntro">
+                保持本页连接 Gateway 并加载模型后，可以用 OpenAI Python SDK 调用当前本地 API。
+              </p>
+              <pre><code id="serverPythonExample"></code></pre>
+            </div>
+          </details>
         </div>
       </section>
 
