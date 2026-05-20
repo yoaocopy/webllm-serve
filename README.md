@@ -6,49 +6,10 @@ gateway exposes local HTTP APIs for clients, CLI tools, and SDKs.
 
 ## Quick Start
 
-The easiest way is to clone this repository and run one of the prebuilt gateway
-binaries from `dist/`. This does not require Go. The gateway binary is
-self-contained: it embeds `index.html`, `server.html`, `client.html`, and `src/`.
-
-Windows:
-
-```powershell
-.\dist\webllm-gateway-windows-amd64.exe
-```
-
-macOS Apple Silicon:
-
-```bash
-./dist/webllm-gateway-darwin-arm64
-```
-
-Linux x64:
-
-```bash
-./dist/webllm-gateway-linux-amd64
-```
-
-You can run the binary from the repository root as shown above. Because the
-static pages are embedded, the same binary can also be copied elsewhere and run
-by itself.
-
-If you cloned the repository and have Go installed, run from the repository
-root. This development command serves files from the working directory, so
-changes to `index.html`, `server.html`, `client.html`, and `src/` are reflected
-after browser refresh:
-
-```bash
-go run .
-```
-
-To test the compiled embedded snapshot behavior from source:
-
-```bash
-go run . -static embedded
-```
-
-If you downloaded a generated release package, enter that package folder and run
-the included binary.
+The easiest way is to download a generated release package for your platform,
+enter that package folder, and run the included gateway binary. This does not
+require Go. In the default embedded package mode, the gateway binary is
+self-contained: it embeds the web pages and frontend assets.
 
 macOS/Linux release package:
 
@@ -62,9 +23,28 @@ Windows release package:
 .\webllm-gateway.exe
 ```
 
-If you cloned the repository but have not built binaries yet, the release
-package binaries above will not exist. Build them first with the commands in
-the [Build Gateway Binaries](#build-gateway-binaries) section.
+If you cloned this repository from git, generated binaries are not included.
+Use Go for development from the repository root:
+
+```bash
+go run .
+```
+
+This development command serves files from the working directory, so changes to
+`index.html`, `server.html`, `client.html`, `prebuilt-models.html`, and `src/`
+are reflected after browser refresh.
+
+To test the compiled embedded snapshot behavior from source:
+
+```bash
+go run . -static embedded
+```
+
+To build local binaries and release package folders after cloning, use the
+commands in the [Build Gateway Binaries](#build-gateway-binaries) section.
+
+Generated `dist/` binaries and `release/` packages are local build artifacts and
+are not committed to git.
 
 The gateway prints the actual URLs at startup. Use those printed URLs as the
 source of truth, especially if the default port is already occupied.
@@ -135,6 +115,10 @@ From a Windows release package:
 
 ## Build Gateway Binaries
 
+`dist/` and `release/` are generated locally by the commands below. They are
+ignored by git, so a fresh clone will not contain these folders until you build
+them or download a prepared release package.
+
 On a computer with Go installed, build a binary for the current platform:
 
 ```bash
@@ -200,7 +184,8 @@ They also create runnable platform packages under `release/`:
 
 In `embedded` mode, each package contains the matching self-contained gateway
 binary and `README.md`. In `files` mode, each package also contains
-`index.html`, `server.html`, `client.html`, same-origin pages, and `src/`.
+`index.html`, `server.html`, `client.html`, `prebuilt-models.html`,
+same-origin pages, `src/`, and `vendor/`.
 A user can download one package folder and run the gateway directly from that
 folder.
 
