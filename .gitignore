@@ -1,2 +1,3 @@
 webllm-gateway-config.json
-# release/
+release/
+dist/
