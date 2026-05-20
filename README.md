@@ -193,6 +193,41 @@ The build scripts previously supported a smaller default target set. The
 platform list is currently enabled in full for release testing; reduce the
 enabled targets in the scripts again if artifact size becomes a concern.
 
+## Publish Release
+
+This repository includes a GitHub Actions workflow:
+
+```text
+.github/workflows/release.yml
+```
+
+It runs when a tag matching `v*` is pushed. The workflow:
+
+1. Checks out the repository.
+2. Sets up Go using `go.mod`.
+3. Runs `go test ./...`.
+4. Runs `sh scripts/build-gateway.sh dist release embedded`.
+5. Archives the generated platform packages.
+6. Publishes them to a GitHub Release.
+
+Generated release assets:
+
+```text
+webllm-serve-windows-amd64.zip
+webllm-serve-windows-arm64.zip
+webllm-serve-macos-amd64.tar.gz
+webllm-serve-macos-arm64.tar.gz
+webllm-serve-linux-amd64.tar.gz
+webllm-serve-linux-arm64.tar.gz
+```
+
+Create and push a version tag to publish a release:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
 ## Using Built Binaries
 
 In the default `embedded` package mode, the gateway executable embeds the
