@@ -479,6 +479,7 @@ The server page includes these preset model IDs:
 - `Qwen2.5-Coder-0.5B-Instruct-q4f16_1-MLC`
 - `Qwen2.5-Coder-1.5B-Instruct-q4f16_1-MLC`
 - `gemma3-1b-it-q4f16_1-MLC`
+- `gemma-4-E2B-it-q4f16_1-MLC` (Hugging Face, experimental)
 - `Qwen2.5-0.5B-Instruct-q4f16_1-MLC`
 - `Llama-3.2-1B-Instruct-q4f16_1-MLC`
 - `Hermes-2-Pro-Mistral-7B-q4f16_1-MLC`
@@ -507,6 +508,14 @@ The custom Hugging Face model is registered as a WebLLM `ModelRecord` in
 
 `https://huggingface.co/yoaocopy/sft_model_1.5B-q4f16_1-MLC`
 
+Gemma 4 E2B is registered as an experimental custom WebLLM `ModelRecord`:
+
+`https://huggingface.co/welcoma/gemma-4-E2B-it-q4f16_1-MLC`
+
+It uses the model's bundled WebGPU wasm library and requires browser WebGPU
+`shader-f16` support. This is a text-generation artifact, not an official
+WebLLM built-in model.
+
 The browser server uses WebLLM's `indexeddb` cache backend for model downloads.
 This matches the earlier same-origin version and avoids `Cache.add()` network
 errors seen with the browser Cache API in some environments. If a page refresh
@@ -519,7 +528,8 @@ The server selects the WebLLM runtime by model:
 - `sft_model_1.5B-q4f16_1-MLC (Hugging Face)` uses `@mlc-ai/web-llm@0.2.79`
   to match the `v0_2_48` model library.
 - Other preset models use `@mlc-ai/web-llm@0.2.83` so newer built-in model
-  records such as Qwen3.5 are available.
+  records such as Qwen3.5 are available. Gemma 4 E2B also uses this default
+  runtime with its custom Hugging Face model library.
 
 ## Browser Client Usage
 
@@ -673,6 +683,45 @@ Important details:
 ```text
 Failed to store ...webgpu.wasm
 Network response was not ok
+```
+
+### Gemma 4 E2B
+
+`gemma-4-E2B-it-q4f16_1-MLC` is registered as an experimental custom
+Hugging Face model from:
+
+`https://huggingface.co/welcoma/gemma-4-E2B-it-q4f16_1-MLC`
+
+The `ModelRecord` uses:
+
+```js
+{
+  model: "https://huggingface.co/welcoma/gemma-4-E2B-it-q4f16_1-MLC",
+  model_id: "gemma-4-E2B-it-q4f16_1-MLC",
+  model_lib:
+    "https://huggingface.co/welcoma/gemma-4-E2B-it-q4f16_1-MLC/resolve/main/libs/gemma-4-E2B-it-q4f16_1-MLC-webgpu.wasm",
+  required_features: ["shader-f16"],
+  overrides: {
+    context_window_size: 4096,
+    sliding_window_size: -1,
+  },
+}
+```
+
+Important details:
+
+- External API callers can request it with alias `gemma4-e2b` or the full model
+  ID.
+- This is not an official `mlc-ai` built-in model record.
+- Browser use requires WebGPU and `shader-f16`.
+- The published artifact is text-generation only; Gemma 4 image/audio features
+  are not exposed through this WebLLM integration.
+- The override keeps the 4096-token context window and disables sliding window
+  attention. Without it, WebLLM can reject the model with:
+
+```text
+Only one of context_window_size and sliding_window_size can be positive.
+Got: context_window_size: 4096, sliding_window_size: 512
 ```
 
 ### Hermes 2 Pro Mistral 7B

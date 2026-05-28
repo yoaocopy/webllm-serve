@@ -15,6 +15,7 @@ export const MODEL_CATALOG = [
   { alias: "m008", id: "Qwen3.5-0.8B-q4f16_1-MLC", vramMB: 1629.49 },
   { alias: "m009", id: "Qwen3.5-2B-q4f16_1-MLC", vramMB: 2245.44 },
   { alias: "m010", id: "sft_model_1.5B-q4f16_1-MLC (Hugging Face)", vramMB: 1629.75 },
+  { alias: "gemma4-e2b", id: "gemma-4-E2B-it-q4f16_1-MLC" },
 ];
 
 export const CURRENT_MODEL_ALIASES = new Set(["current", "loaded"]);
@@ -102,6 +103,17 @@ export const CUSTOM_MODEL_RECORDS = [
   },
   {
     model_id: "gemma3-1b-it-q4f16_1-MLC",
+    overrides: {
+      context_window_size: 4096,
+      sliding_window_size: -1,
+    },
+  },
+  {
+    model: "https://huggingface.co/welcoma/gemma-4-E2B-it-q4f16_1-MLC",
+    model_id: "gemma-4-E2B-it-q4f16_1-MLC",
+    model_lib:
+      "https://huggingface.co/welcoma/gemma-4-E2B-it-q4f16_1-MLC/resolve/main/libs/gemma-4-E2B-it-q4f16_1-MLC-webgpu.wasm",
+    required_features: ["shader-f16"],
     overrides: {
       context_window_size: 4096,
       sliding_window_size: -1,
