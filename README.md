@@ -547,7 +547,13 @@ loaded in `server.html` and sends chat requests without a `model` field.
 
 The server does not override client sampling parameters. Values such as
 `temperature`, `top_p`, `max_tokens`, and `stop` come from `client.html` or the
-request payload.
+request payload. In `client.html`, disable `Send sampling params` to omit
+`max_tokens`, `temperature`, and `top_p` from the request and let WebLLM fall
+back to the loaded model's chat configuration.
+
+The HTTP client can also disable `Send System Prompt`. When disabled, the
+request does not include a `system` message, so WebLLM uses the model's
+conversation template defaults if the model provides them.
 
 ## Language Switching
 

@@ -5,7 +5,9 @@ const el = {
   baseUrl: document.querySelector("#baseUrl"),
   apiKey: document.querySelector("#apiKey"),
   serverModel: document.querySelector("#serverModel"),
+  sendSystemPrompt: document.querySelector("#sendSystemPrompt"),
   systemPrompt: document.querySelector("#systemPrompt"),
+  sendSamplingParams: document.querySelector("#sendSamplingParams"),
   maxTokens: document.querySelector("#maxTokens"),
   temperature: document.querySelector("#temperature"),
   topP: document.querySelector("#topP"),
@@ -39,6 +41,8 @@ function init() {
     setRaw({});
   });
   el.chatForm.addEventListener("submit", submitMessage);
+  el.sendSystemPrompt?.addEventListener("change", updateOptionalParameterControls);
+  el.sendSamplingParams?.addEventListener("change", updateOptionalParameterControls);
   el.userInput.addEventListener("keydown", (event) => {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
@@ -52,6 +56,7 @@ function init() {
     }
     setStatus(languageAwareStatus());
   });
+  updateOptionalParameterControls();
 }
 
 async function initGatewayConfig() {
@@ -165,18 +170,32 @@ async function submitMessage(event) {
 function buildChatRequest() {
   const messages = [];
   const system = el.systemPrompt.value.trim();
-  if (system) {
+  if (el.sendSystemPrompt.checked && system) {
     messages.push({ role: "system", content: system });
   }
   messages.push(...chatMessages.filter((message) => message.content.trim()));
 
-  return {
+  const request = {
     messages,
-    max_tokens: Number(el.maxTokens.value) || 512,
-    temperature: Number(el.temperature.value),
-    top_p: Number(el.topP.value),
     stream: el.stream.value === "true",
   };
+
+  if (el.sendSamplingParams.checked) {
+    request.max_tokens = Number(el.maxTokens.value) || 512;
+    request.temperature = Number(el.temperature.value);
+    request.top_p = Number(el.topP.value);
+  }
+
+  return request;
+}
+
+function updateOptionalParameterControls() {
+  const sendSystemPrompt = el.sendSystemPrompt?.checked ?? true;
+  const sendSamplingParams = el.sendSamplingParams?.checked ?? true;
+  el.systemPrompt.disabled = !sendSystemPrompt;
+  el.maxTokens.disabled = !sendSamplingParams;
+  el.temperature.disabled = !sendSamplingParams;
+  el.topP.disabled = !sendSamplingParams;
 }
 
 async function readSSE(response, onChunk) {

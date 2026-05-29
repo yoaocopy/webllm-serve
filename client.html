@@ -13,28 +13,36 @@
           <h1 data-i18n="clientTitle">HTTP 客户端</h1>
           <span id="clientStatus" class="status-dot" data-i18n="disconnected">未连接</span>
         </div>
-        <label class="field language-field">
+        <label class="field language-field compact-field">
           <span data-i18n="languageLabel">语言</span>
           <select id="languageSelect">
             <option value="zh" data-i18n="chinese">中文</option>
             <option value="en" data-i18n="english">English</option>
           </select>
         </label>
-        <label class="field">
+        <label class="field compact-field">
           <span>Base URL</span>
           <input id="baseUrl" value="http://127.0.0.1:21434/v1" />
         </label>
-        <label class="field">
+        <label class="field compact-field">
           <span>API Key</span>
           <input id="apiKey" value="webllm-local" />
         </label>
-        <label class="field">
+        <label class="field compact-field">
           <span data-i18n="serverModelLabel">Gateway 当前模型</span>
           <input id="serverModel" data-i18n-placeholder="notLoaded" placeholder="未加载" readonly />
+        </label>
+        <label class="checkbox-field">
+          <input id="sendSystemPrompt" type="checkbox" checked />
+          <span data-i18n="sendSystemPromptLabel">Send System Prompt</span>
         </label>
         <label class="field">
           <span data-i18n="systemPromptLabel">System Prompt</span>
           <textarea id="systemPrompt" rows="5">You are a helpful assistant.</textarea>
+        </label>
+        <label class="checkbox-field">
+          <input id="sendSamplingParams" type="checkbox" checked />
+          <span data-i18n="sendSamplingParamsLabel">Send sampling params</span>
         </label>
         <div class="two-col">
           <label class="field">

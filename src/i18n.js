@@ -93,7 +93,9 @@ export const translations = {
 
     clientTitle: "HTTP 客户端",
     serverModelLabel: "Gateway 当前模型",
+    sendSystemPromptLabel: "Send System Prompt",
     systemPromptLabel: "System Prompt",
+    sendSamplingParamsLabel: "Send sampling params",
     maxTokensLabel: "Max Tokens",
     temperatureLabel: "Temperature",
     topPLabel: "Top P",
@@ -211,7 +213,9 @@ export const translations = {
 
     clientTitle: "HTTP Client",
     serverModelLabel: "Gateway current model",
+    sendSystemPromptLabel: "Send System Prompt",
     systemPromptLabel: "System Prompt",
+    sendSamplingParamsLabel: "Send sampling params",
     maxTokensLabel: "Max Tokens",
     temperatureLabel: "Temperature",
     topPLabel: "Top P",

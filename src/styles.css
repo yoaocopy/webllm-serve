@@ -381,6 +381,40 @@ pre {
   white-space: normal;
 }
 
+.settings .panel-title {
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.settings .panel-title h1 {
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.settings .field {
+  gap: 5px;
+  margin-bottom: 10px;
+  font-size: 12px;
+}
+
+.settings .field input,
+.settings .field select,
+.settings .field textarea {
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.settings .compact-field {
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.settings .compact-field span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .status-pill[data-state="busy"] {
   background: #fff5e7;
   color: var(--warn);
@@ -557,6 +591,30 @@ pre {
   resize: vertical;
 }
 
+.checkbox-field {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  margin: 2px 0 10px;
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.checkbox-field input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+
+.field input:disabled,
+.field textarea:disabled {
+  background: #f3f5f2;
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
 .switch-row {
   margin: 6px 0 16px;
   color: var(--muted);
@@ -682,14 +740,19 @@ pre {
   display: grid;
   grid-template-columns: 340px minmax(0, 1fr);
   gap: 16px;
-  min-height: 100vh;
+  height: 100vh;
+  min-height: 520px;
   padding: 18px 0;
+  overflow: hidden;
 }
 
 .settings {
   align-self: start;
   position: sticky;
   top: 18px;
+  max-height: calc(100vh - 36px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .two-col {
@@ -700,11 +763,14 @@ pre {
 
 .chat-main {
   display: grid;
-  grid-template-rows: minmax(360px, 1fr) auto auto;
-  min-height: calc(100vh - 36px);
+  grid-template-rows: minmax(0, 1fr) auto auto;
+  height: calc(100vh - 36px);
+  min-height: 0;
+  overflow: hidden;
 }
 
 .messages {
+  min-height: 0;
   overflow: auto;
   padding-right: 4px;
 }
@@ -791,6 +857,20 @@ pre {
 
   .settings {
     position: static;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .chat-shell {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  .chat-main {
+    height: auto;
+    min-height: calc(100vh - 36px);
+    overflow: visible;
   }
 
   .composer {
